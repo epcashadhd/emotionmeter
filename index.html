@@ -409,15 +409,223 @@
             );
         }
 
+        function EmotionWritingView({ emotion, onBack, onHome }) {
+            const [mode, setMode] = useState('draw'); // 'draw', 'type'
+            const [text, setText] = useState('');
+            const [meterLevel, setMeterLevel] = useState(1);
+            const canvasRef = useRef(null);
+            const [isDrawing, setIsDrawing] = useState(false);
+            
+            // Canvas Logic
+            useEffect(() => {
+                const canvas = canvasRef.current;
+                if (canvas) {
+                    const initCanvas = () => {
+                        // Set canvas size to match display size
+                        canvas.width = canvas.offsetWidth;
+                        canvas.height = canvas.offsetHeight;
+                        
+                        const ctx = canvas.getContext('2d');
+                        ctx.lineWidth = 3;
+                        ctx.lineCap = 'round';
+                        ctx.strokeStyle = '#334155'; // slate-700
+                    };
+
+                    initCanvas();
+                    // Re-init after a short delay to ensure layout is stable (e.g. after transitions)
+                    setTimeout(initCanvas, 100);
+                }
+            }, []);
+
+            // Handle resize
+            useEffect(() => {
+                const handleResize = () => {
+                    const canvas = canvasRef.current;
+                    if (canvas) {
+                        // Save current content
+                        const tempCanvas = document.createElement('canvas');
+                        tempCanvas.width = canvas.width;
+                        tempCanvas.height = canvas.height;
+                        tempCanvas.getContext('2d').drawImage(canvas, 0, 0);
+                        
+                        // Resize
+                        canvas.width = canvas.offsetWidth;
+                        canvas.height = canvas.offsetHeight;
+                        
+                        // Restore content
+                        const ctx = canvas.getContext('2d');
+                        ctx.lineWidth = 3;
+                        ctx.lineCap = 'round';
+                        ctx.strokeStyle = '#334155';
+                        ctx.drawImage(tempCanvas, 0, 0);
+                    }
+                };
+                window.addEventListener('resize', handleResize);
+                return () => window.removeEventListener('resize', handleResize);
+            }, []);
+
+            const startDrawing = (e) => {
+                if (mode !== 'draw') return;
+                const canvas = canvasRef.current;
+                const ctx = canvas.getContext('2d');
+                const rect = canvas.getBoundingClientRect();
+                const x = (e.clientX || e.touches[0].clientX) - rect.left;
+                const y = (e.clientY || e.touches[0].clientY) - rect.top;
+                
+                ctx.beginPath();
+                ctx.moveTo(x, y);
+                setIsDrawing(true);
+            };
+
+            const draw = (e) => {
+                if (!isDrawing || mode !== 'draw') return;
+                // Only prevent default if we are drawing to avoid scrolling
+                if (e.cancelable) e.preventDefault(); 
+                
+                const canvas = canvasRef.current;
+                const ctx = canvas.getContext('2d');
+                const rect = canvas.getBoundingClientRect();
+                const x = (e.clientX || e.touches[0].clientX) - rect.left;
+                const y = (e.clientY || e.touches[0].clientY) - rect.top;
+
+                ctx.lineTo(x, y);
+                ctx.stroke();
+            };
+
+            const stopDrawing = () => {
+                setIsDrawing(false);
+            };
+
+            const clearAll = () => {
+                const canvas = canvasRef.current;
+                const ctx = canvas.getContext('2d');
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                setText('');
+            };
+
+            return (
+                <div className="fixed inset-0 w-full h-full bg-[#FDFBF7] flex flex-col z-50">
+                    {/* Header */}
+                    <div className="w-full p-2 flex justify-between items-center bg-[#FDFBF7]/95 backdrop-blur-sm shadow-sm shrink-0">
+                        <button 
+                            onClick={onBack}
+                            className="w-10 h-10 flex items-center justify-center bg-white rounded-full shadow-md border border-slate-100 hover:scale-105 active:scale-95 transition-all duration-300"
+                        >
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5 text-slate-600">
+                                <path d="M19 12H5M12 19l-7-7 7-7" />
+                            </svg>
+                        </button>
+                        <h1 className="text-xl font-bold text-slate-700">記錄心情</h1>
+                        <button 
+                            onClick={onHome}
+                            className="w-10 h-10 flex items-center justify-center bg-white rounded-full shadow-md border border-slate-100 hover:scale-105 active:scale-95 transition-all duration-300"
+                        >
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5 text-slate-600">
+                                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                                <polyline points="9 22 9 12 15 12 15 22"></polyline>
+                            </svg>
+                        </button>
+                    </div>
+
+                    <div className="flex-1 flex flex-row p-4 gap-4 overflow-hidden">
+                        {/* Left Column: Emotion + Thermometer */}
+                        <div className="w-1/3 max-w-[220px] flex flex-col gap-4 items-center overflow-y-auto">
+                            {/* Emotion Image */}
+                            <div className="w-full aspect-square bg-white rounded-2xl shadow-sm border-2 border-slate-100 p-2 flex items-center justify-center shrink-0">
+                                <img 
+                                    src={`https://github.com/epcashadhd/emotionmeter/blob/main/${emotion.type}${emotion.index}.png?raw=true`}
+                                    alt="Selected Emotion"
+                                    className="w-full h-full object-contain"
+                                    referrerPolicy="no-referrer"
+                                />
+                            </div>
+
+                            {/* Mini Thermometer */}
+                            <div className="flex-1 w-full bg-white rounded-2xl shadow-sm border-2 border-slate-100 p-2 flex flex-col items-center justify-between min-h-[300px]">
+                                <div className="text-slate-500 font-bold mb-2">情緒指數</div>
+                                <div className="flex-1 w-full flex flex-col-reverse gap-1">
+                                    {EMOTION_LEVELS.map((level) => (
+                                        <button
+                                            key={level.id}
+                                            onClick={() => setMeterLevel(level.id)}
+                                            className={`flex-1 w-full rounded-lg transition-all duration-300 flex items-center justify-center font-bold text-white shadow-sm ${meterLevel === level.id ? 'scale-105 ring-2 ring-offset-1 ring-slate-300' : 'opacity-40 hover:opacity-70'}`}
+                                            style={{ backgroundColor: level.id === 1 ? '#4ADE80' : level.id === 2 ? '#2DD4BF' : level.id === 3 ? '#60A5FA' : level.id === 4 ? '#EAB308' : level.id === 5 ? '#6366F1' : level.id === 6 ? '#EA580C' : '#B91C1C' }}
+                                        >
+                                            {level.id}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Right Column: Writing Box */}
+                        <div className="flex-1 bg-white rounded-3xl shadow-sm border-2 border-slate-100 flex flex-col relative overflow-hidden">
+                            {/* Toolbar */}
+                            <div className="absolute top-4 right-4 flex gap-2 z-20">
+                                <button 
+                                    onClick={() => setMode('draw')}
+                                    className={`w-12 h-12 rounded-full flex items-center justify-center shadow-md transition-all ${mode === 'draw' ? 'bg-orange-500 text-white scale-110' : 'bg-white text-slate-500 hover:bg-slate-50'}`}
+                                >
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6">
+                                        <path d="M12 20h9" /><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+                                    </svg>
+                                </button>
+                                <button 
+                                    onClick={() => setMode('type')}
+                                    className={`w-12 h-12 rounded-full flex items-center justify-center shadow-md transition-all ${mode === 'type' ? 'bg-orange-500 text-white scale-110' : 'bg-white text-slate-500 hover:bg-slate-50'}`}
+                                >
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6">
+                                        <rect x="2" y="4" width="20" height="16" rx="2" /><path d="M6 8h.001" /><path d="M10 8h.001" /><path d="M14 8h.001" /><path d="M18 8h.001" /><path d="M6 12h.001" /><path d="M10 12h.001" /><path d="M14 12h.001" /><path d="M18 12h.001" /><path d="M7 16h10" />
+                                    </svg>
+                                </button>
+                                <button 
+                                    onClick={clearAll}
+                                    className="w-12 h-12 rounded-full flex items-center justify-center bg-white text-slate-500 shadow-md hover:bg-red-50 hover:text-red-500 transition-all"
+                                >
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6">
+                                        <polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                                    </svg>
+                                </button>
+                            </div>
+
+                            {/* Canvas Layer */}
+                            <canvas
+                                ref={canvasRef}
+                                className={`absolute inset-0 w-full h-full touch-none cursor-crosshair ${mode === 'draw' ? 'z-10' : 'z-0 pointer-events-none'}`}
+                                onMouseDown={startDrawing}
+                                onMouseMove={draw}
+                                onMouseUp={stopDrawing}
+                                onMouseLeave={stopDrawing}
+                                onTouchStart={startDrawing}
+                                onTouchMove={draw}
+                                onTouchEnd={stopDrawing}
+                            />
+
+                            {/* Textarea Layer */}
+                            <textarea
+                                value={text}
+                                onChange={(e) => setText(e.target.value)}
+                                placeholder="在這裡寫下你的想法..."
+                                className={`absolute inset-0 w-full h-full bg-transparent p-6 text-xl leading-relaxed resize-none focus:outline-none ${mode === 'type' ? 'z-10' : 'z-0 pointer-events-none opacity-50'}`}
+                            />
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
         function EmotionExplorerTool({ onBack, show }) {
             const [selectedEmotion, setSelectedEmotion] = useState(null);
-            const [isMobileLandscape, setIsMobileLandscape] = useState(false);
+            const [isCompactLayout, setIsCompactLayout] = useState(false);
+            const [step, setStep] = useState('select'); // 'select' | 'write'
 
             useEffect(() => {
                 const checkLayout = () => {
-                    // Check for mobile landscape (typically short height)
-                    const matches = window.matchMedia("(max-height: 500px) and (orientation: landscape)").matches;
-                    setIsMobileLandscape(matches);
+                    // Check for mobile landscape (typically short height) OR tablet portrait (narrow width)
+                    const isLandscapeMobile = window.matchMedia("(max-height: 500px) and (orientation: landscape)").matches;
+                    // Include all portrait devices up to 1024px (covers mobile & tablet portrait)
+                    const isPortraitMobileOrTablet = window.matchMedia("(max-width: 1024px) and (orientation: portrait)").matches;
+                    setIsCompactLayout(isLandscapeMobile || isPortraitMobileOrTablet);
                 };
                 
                 checkLayout();
@@ -430,17 +638,19 @@
             const negativeEmotions = Array.from({ length: 13 }, (_, i) => ({ id: `n${i+1}`, type: 'negative', index: i + 1 }));
 
             let rows = [];
-            if (isMobileLandscape) {
-                // Mobile Landscape: 4, 3, 4, 2 pattern (Total 13)
+            if (isCompactLayout) {
+                // Mobile Landscape / Tablet Portrait: 3, 2, 3, 2, 3 pattern (Total 13)
                 rows = [
-                    positiveEmotions.slice(0, 4),
-                    positiveEmotions.slice(4, 7),
-                    positiveEmotions.slice(7, 11),
-                    positiveEmotions.slice(11, 13),
-                    negativeEmotions.slice(0, 4),
-                    negativeEmotions.slice(4, 7),
-                    negativeEmotions.slice(7, 11),
-                    negativeEmotions.slice(11, 13)
+                    positiveEmotions.slice(0, 3),
+                    positiveEmotions.slice(3, 5),
+                    positiveEmotions.slice(5, 8),
+                    positiveEmotions.slice(8, 10),
+                    positiveEmotions.slice(10, 13),
+                    negativeEmotions.slice(0, 3),
+                    negativeEmotions.slice(3, 5),
+                    negativeEmotions.slice(5, 8),
+                    negativeEmotions.slice(8, 10),
+                    negativeEmotions.slice(10, 13)
                 ];
             } else {
                 // Default: 7, 6 pattern
@@ -456,6 +666,27 @@
                 e.stopPropagation();
                 setSelectedEmotion(id);
             };
+
+            const handleNext = (e) => {
+                e.stopPropagation();
+                if (selectedEmotion) {
+                    setStep('write');
+                }
+            };
+
+            // Find selected emotion data
+            const allEmotions = [...positiveEmotions, ...negativeEmotions];
+            const selectedEmotionData = allEmotions.find(e => e.id === selectedEmotion);
+
+            if (step === 'write' && selectedEmotionData) {
+                return (
+                    <EmotionWritingView 
+                        emotion={selectedEmotionData} 
+                        onBack={() => setStep('select')}
+                        onHome={onBack}
+                    />
+                );
+            }
 
             let globalIndex = 0;
 
@@ -482,7 +713,7 @@
                         {/* Next Button (Top Right) */}
                         <div className="w-10 h-10 relative">
                             <button 
-                                onClick={(e) => { e.stopPropagation(); if(selectedEmotion) alert("Next step coming soon!"); }}
+                                onClick={handleNext}
                                 className={`absolute inset-0 w-full h-full flex items-center justify-center bg-orange-500 rounded-full shadow-md border-2 border-orange-400 hover:bg-orange-600 transition-all duration-500 transform ${selectedEmotion ? 'opacity-100 scale-100 rotate-0' : 'opacity-0 scale-50 rotate-180 pointer-events-none'}`}
                             >
                                 <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
@@ -496,7 +727,7 @@
                     {/* Content */}
                     <div className="flex-1 flex flex-col items-center gap-2 sm:gap-3 p-2 overflow-y-auto pb-4 pt-4">
                         {rows.map((row, rowIndex) => (
-                            <div key={rowIndex} className={`flex flex-wrap justify-center gap-2 sm:gap-4 ${rowIndex === 1 || (isMobileLandscape && rowIndex === 3) ? 'mb-4 sm:mb-6' : ''}`}>
+                            <div key={rowIndex} className={`flex flex-wrap justify-center gap-2 sm:gap-4 xl:gap-6 ${rowIndex === 1 || (isCompactLayout && rowIndex === 3) ? 'mb-4 sm:mb-6' : ''}`}>
                                 {row.map((emotion) => {
                                     const delay = 100 + (globalIndex * 40); // Staggered delay
                                     globalIndex++;
@@ -516,7 +747,7 @@
                                                     : 'hover:scale-105 opacity-90 hover:opacity-100'
                                             }`}
                                         >
-                                            <div className={`w-20 h-20 sm:w-24 sm:h-24 md:w-32 md:h-32 rounded-2xl bg-white shadow-sm border-2 flex items-center justify-center overflow-hidden transition-all duration-300 ${
+                                            <div className={`${isCompactLayout ? 'w-24 h-24 sm:w-32 sm:h-32' : 'w-20 h-20 sm:w-24 sm:h-24'} md:w-32 md:h-32 xl:w-36 xl:h-36 2xl:w-40 2xl:h-40 rounded-2xl bg-white shadow-sm border-2 flex items-center justify-center overflow-hidden transition-all duration-300 ${
                                                 selectedEmotion === emotion.id 
                                                     ? 'border-orange-400 shadow-orange-200 shadow-xl ring-4 ring-orange-100' 
                                                     : 'border-slate-100 group-hover:border-orange-200'
