@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
@@ -113,7 +114,7 @@
     <div id="root"></div>
 
     <script type="text/babel">
-        const { useState, useEffect } = React;
+        const { useState, useEffect, useRef } = React;
 
         // --- Configuration ---
         const EMOTION_LEVELS = [
@@ -410,7 +411,7 @@
         }
 
         function EmotionWritingView({ emotion, onBack, onHome }) {
-            const [mode, setMode] = useState('draw'); // 'draw', 'type'
+            const [mode, setMode] = useState('draw'); // 'draw', 'type', 'erase', null
             const [text, setText] = useState('');
             const [meterLevel, setMeterLevel] = useState(1);
             const canvasRef = useRef(null);
@@ -426,9 +427,8 @@
                         canvas.height = canvas.offsetHeight;
                         
                         const ctx = canvas.getContext('2d');
-                        ctx.lineWidth = 3;
                         ctx.lineCap = 'round';
-                        ctx.strokeStyle = '#334155'; // slate-700
+                        ctx.lineJoin = 'round';
                     };
 
                     initCanvas();
@@ -454,9 +454,8 @@
                         
                         // Restore content
                         const ctx = canvas.getContext('2d');
-                        ctx.lineWidth = 3;
                         ctx.lineCap = 'round';
-                        ctx.strokeStyle = '#334155';
+                        ctx.lineJoin = 'round';
                         ctx.drawImage(tempCanvas, 0, 0);
                     }
                 };
@@ -465,7 +464,7 @@
             }, []);
 
             const startDrawing = (e) => {
-                if (mode !== 'draw') return;
+                if (mode !== 'draw' && mode !== 'erase') return;
                 const canvas = canvasRef.current;
                 const ctx = canvas.getContext('2d');
                 const rect = canvas.getBoundingClientRect();
@@ -474,11 +473,22 @@
                 
                 ctx.beginPath();
                 ctx.moveTo(x, y);
+                
+                // Set style based on mode
+                if (mode === 'erase') {
+                    ctx.globalCompositeOperation = 'destination-out';
+                    ctx.lineWidth = 20;
+                } else {
+                    ctx.globalCompositeOperation = 'source-over';
+                    ctx.lineWidth = 3;
+                    ctx.strokeStyle = '#334155';
+                }
+
                 setIsDrawing(true);
             };
 
             const draw = (e) => {
-                if (!isDrawing || mode !== 'draw') return;
+                if (!isDrawing || (mode !== 'draw' && mode !== 'erase')) return;
                 // Only prevent default if we are drawing to avoid scrolling
                 if (e.cancelable) e.preventDefault(); 
                 
@@ -503,10 +513,36 @@
                 setText('');
             };
 
+            const toggleMode = (newMode) => {
+                if (mode === newMode) {
+                    setMode(null);
+                } else {
+                    setMode(newMode);
+                }
+            };
+
+            const getSolidColor = (val) => {
+                if (val <= 1) return '#4ADE80';
+                if (val <= 2) return '#2DD4BF';
+                if (val <= 3) return '#60A5FA';
+                if (val <= 4) return '#EAB308';
+                if (val <= 5) return '#6366F1';
+                if (val <= 6) return '#EA580C';
+                return '#B91C1C';
+            };
+            const solidColor = getSolidColor(meterLevel);
+            const heightPercentage = (meterLevel / 7) * 100;
+
             return (
-                <div className="fixed inset-0 w-full h-full bg-[#FDFBF7] flex flex-col z-50">
+                <div 
+                    className="fixed inset-0 w-full h-full bg-[#FDFBF7] flex flex-col z-50"
+                    onClick={() => setMode(null)}
+                >
                     {/* Header */}
-                    <div className="w-full p-2 flex justify-between items-center bg-[#FDFBF7]/95 backdrop-blur-sm shadow-sm shrink-0">
+                    <div 
+                        className="w-full p-2 flex justify-between items-center bg-[#FDFBF7]/95 backdrop-blur-sm shadow-sm shrink-0"
+                        onClick={(e) => e.stopPropagation()}
+                    >
                         <button 
                             onClick={onBack}
                             className="w-10 h-10 flex items-center justify-center bg-white rounded-full shadow-md border border-slate-100 hover:scale-105 active:scale-95 transition-all duration-300"
@@ -529,7 +565,10 @@
 
                     <div className="flex-1 flex flex-row p-4 gap-4 overflow-hidden">
                         {/* Left Column: Emotion + Thermometer */}
-                        <div className="w-1/3 max-w-[220px] flex flex-col gap-4 items-center overflow-y-auto">
+                        <div 
+                            className="w-1/3 max-w-[220px] flex flex-col gap-4 items-center overflow-y-auto"
+                            onClick={(e) => e.stopPropagation()}
+                        >
                             {/* Emotion Image */}
                             <div className="w-full aspect-square bg-white rounded-2xl shadow-sm border-2 border-slate-100 p-2 flex items-center justify-center shrink-0">
                                 <img 
@@ -541,46 +580,92 @@
                             </div>
 
                             {/* Mini Thermometer */}
-                            <div className="flex-1 w-full bg-white rounded-2xl shadow-sm border-2 border-slate-100 p-2 flex flex-col items-center justify-between min-h-[300px]">
+                            <div className="flex-1 w-full bg-white rounded-2xl shadow-sm border-2 border-slate-100 p-4 flex flex-col items-center justify-between min-h-[300px]">
                                 <div className="text-slate-500 font-bold mb-2">情緒指數</div>
-                                <div className="flex-1 w-full flex flex-col-reverse gap-1">
-                                    {EMOTION_LEVELS.map((level) => (
-                                        <button
-                                            key={level.id}
-                                            onClick={() => setMeterLevel(level.id)}
-                                            className={`flex-1 w-full rounded-lg transition-all duration-300 flex items-center justify-center font-bold text-white shadow-sm ${meterLevel === level.id ? 'scale-105 ring-2 ring-offset-1 ring-slate-300' : 'opacity-40 hover:opacity-70'}`}
-                                            style={{ backgroundColor: level.id === 1 ? '#4ADE80' : level.id === 2 ? '#2DD4BF' : level.id === 3 ? '#60A5FA' : level.id === 4 ? '#EAB308' : level.id === 5 ? '#6366F1' : level.id === 6 ? '#EA580C' : '#B91C1C' }}
+                                
+                                <div className="flex-1 w-full flex items-center justify-center py-4">
+                                    <div className="relative h-full w-12 bg-slate-100 rounded-full border-2 border-slate-300 flex flex-col justify-end items-center shadow-inner">
+                                        {/* Ticks */}
+                                        <div className="absolute inset-0 z-20 flex flex-col justify-between py-4 pointer-events-none">
+                                            {[...Array(7)].map((_, i) => (
+                                                <div key={i} className={`w-full h-0.5 ${i === 0 || i === 6 ? 'bg-slate-400/50 w-1/2 mx-auto' : 'bg-slate-300/50 w-1/3 mx-auto'}`} />
+                                            ))}
+                                        </div>
+
+                                        {/* Liquid */}
+                                        <div 
+                                            className="w-full relative z-10 rounded-b-full"
+                                            style={{ 
+                                                height: `${heightPercentage}%`, 
+                                                backgroundColor: solidColor,
+                                                transition: 'height 0.3s ease, background-color 0.3s ease'
+                                            }}
                                         >
-                                            {level.id}
-                                        </button>
-                                    ))}
+                                            <div className="absolute top-0 left-0 w-full h-2 bg-white/30 rounded-t-full" />
+                                        </div>
+
+                                        {/* Bulb */}
+                                        <div 
+                                            className="absolute -bottom-5 w-16 h-16 rounded-full border-2 border-slate-300 z-30 flex items-center justify-center shadow-md transition-colors duration-300"
+                                            style={{ backgroundColor: solidColor }}
+                                        >
+                                            <span className="text-white font-bold text-2xl drop-shadow-md">{meterLevel}</span>
+                                        </div>
+
+                                        {/* Invisible Click Area */}
+                                        <div className="absolute inset-0 z-40 flex flex-col-reverse cursor-pointer">
+                                            {[...Array(7)].map((_, i) => (
+                                                <div 
+                                                    key={i} 
+                                                    className="flex-1 w-full"
+                                                    onClick={() => setMeterLevel(i + 1)}
+                                                />
+                                            ))}
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
 
                         {/* Right Column: Writing Box */}
-                        <div className="flex-1 bg-white rounded-3xl shadow-sm border-2 border-slate-100 flex flex-col relative overflow-hidden">
+                        <div 
+                            className="flex-1 bg-white rounded-3xl shadow-sm border-2 border-slate-100 flex flex-col relative overflow-hidden"
+                            onClick={(e) => e.stopPropagation()}
+                        >
                             {/* Toolbar */}
                             <div className="absolute top-4 right-4 flex gap-2 z-20">
                                 <button 
-                                    onClick={() => setMode('draw')}
+                                    onClick={() => toggleMode('draw')}
                                     className={`w-12 h-12 rounded-full flex items-center justify-center shadow-md transition-all ${mode === 'draw' ? 'bg-orange-500 text-white scale-110' : 'bg-white text-slate-500 hover:bg-slate-50'}`}
+                                    title="Draw"
                                 >
                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6">
                                         <path d="M12 20h9" /><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
                                     </svg>
                                 </button>
                                 <button 
-                                    onClick={() => setMode('type')}
+                                    onClick={() => toggleMode('type')}
                                     className={`w-12 h-12 rounded-full flex items-center justify-center shadow-md transition-all ${mode === 'type' ? 'bg-orange-500 text-white scale-110' : 'bg-white text-slate-500 hover:bg-slate-50'}`}
+                                    title="Type"
                                 >
                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6">
                                         <rect x="2" y="4" width="20" height="16" rx="2" /><path d="M6 8h.001" /><path d="M10 8h.001" /><path d="M14 8h.001" /><path d="M18 8h.001" /><path d="M6 12h.001" /><path d="M10 12h.001" /><path d="M14 12h.001" /><path d="M18 12h.001" /><path d="M7 16h10" />
                                     </svg>
                                 </button>
                                 <button 
+                                    onClick={() => toggleMode('erase')}
+                                    className={`w-12 h-12 rounded-full flex items-center justify-center shadow-md transition-all ${mode === 'erase' ? 'bg-orange-500 text-white scale-110' : 'bg-white text-slate-500 hover:bg-slate-50'}`}
+                                    title="Eraser"
+                                >
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6">
+                                        <path d="M20 20H7L3 16C2 15 2 13 3 12L13 2L22 11L20 20Z" />
+                                        <path d="M17 17L7 7" />
+                                    </svg>
+                                </button>
+                                <button 
                                     onClick={clearAll}
                                     className="w-12 h-12 rounded-full flex items-center justify-center bg-white text-slate-500 shadow-md hover:bg-red-50 hover:text-red-500 transition-all"
+                                    title="Clear All"
                                 >
                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6">
                                         <polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
@@ -591,7 +676,7 @@
                             {/* Canvas Layer */}
                             <canvas
                                 ref={canvasRef}
-                                className={`absolute inset-0 w-full h-full touch-none cursor-crosshair ${mode === 'draw' ? 'z-10' : 'z-0 pointer-events-none'}`}
+                                className={`absolute inset-0 w-full h-full touch-none cursor-crosshair ${mode === 'draw' || mode === 'erase' ? 'z-10' : 'z-0 pointer-events-none'}`}
                                 onMouseDown={startDrawing}
                                 onMouseMove={draw}
                                 onMouseUp={stopDrawing}
@@ -727,7 +812,7 @@
                     {/* Content */}
                     <div className="flex-1 flex flex-col items-center gap-2 sm:gap-3 p-2 overflow-y-auto pb-4 pt-4">
                         {rows.map((row, rowIndex) => (
-                            <div key={rowIndex} className={`flex flex-wrap justify-center gap-2 sm:gap-4 xl:gap-6 ${rowIndex === 1 || (isCompactLayout && rowIndex === 3) ? 'mb-4 sm:mb-6' : ''}`}>
+                            <div key={rowIndex} className={`flex flex-wrap justify-center gap-2 sm:gap-4 xl:gap-6 ${rowIndex === 1 || (isCompactLayout && rowIndex === 3) ? 'mb-4 sm:mb-6' : ''} ${isCompactLayout && rowIndex === 4 ? 'mb-16' : ''}`}>
                                 {row.map((emotion) => {
                                     const delay = 100 + (globalIndex * 40); // Staggered delay
                                     globalIndex++;
