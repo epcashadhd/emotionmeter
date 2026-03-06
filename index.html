@@ -133,7 +133,7 @@
             const heightPercentage = (level / 7) * 100;
 
             return (
-                <div className={`min-h-screen w-full flex flex-col items-center justify-center bg-gradient-to-br ${currentGradient} p-4 font-main text-slate-800 relative overflow-hidden transition-all duration-700`}>
+                <div className={`fixed inset-0 w-full h-full flex flex-col items-center justify-center bg-gradient-to-br ${currentGradient} p-4 font-main text-slate-800 overflow-hidden transition-all duration-700`}>
                     
                     <style>{`
                         input[type=range]::-webkit-slider-thumb {
@@ -197,7 +197,7 @@
                                         {/* Fixed height container for text */}
                                         <div className="flex flex-col items-center h-[140px] justify-start">
                                             <h2 className="text-6xl font-bold transition-colors duration-300 whitespace-nowrap" style={{ color: solidColor }}>{currentState.label}</h2>
-                                            <p className="text-slate-600 text-3xl font-bold mt-2 leading-snug whitespace-pre-wrap">{currentState.description}</p>
+                                            <p className="text-slate-600 text-2xl font-bold mt-2 leading-snug whitespace-pre-wrap">{currentState.description}</p>
                                         </div>
                                     </div>
                                 </div>
@@ -221,7 +221,7 @@
                         </div>
 
                         <div className="w-full pt-6 border-t border-slate-200">
-                            <p className="text-3xl text-slate-600 text-center font-bold leading-relaxed">
+                            <p className="text-2xl text-slate-600 text-center font-bold leading-relaxed">
                                 {level >= 6 ? "深呼吸，慢慢數到十。" : 
                                 level >= 4 ? "找人說說你的煩惱。" : 
                                 level >= 3 ? "聽聽音樂，轉換心情。" :
