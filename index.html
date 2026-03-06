@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
@@ -410,12 +409,43 @@
             );
         }
 
-        function EmotionWritingView({ emotion, onBack, onHome }) {
-            const [mode, setMode] = useState('draw'); // 'draw', 'type', 'erase', null
+        function EmotionWritingView({ emotion, onBack, onHome, show }) {
+            const [mode, setMode] = useState(null); // 'draw', 'type', 'erase', null
             const [text, setText] = useState('');
             const [meterLevel, setMeterLevel] = useState(1);
             const canvasRef = useRef(null);
             const [isDrawing, setIsDrawing] = useState(false);
+            const [isDraggingMeter, setIsDraggingMeter] = useState(false);
+            const [eraserSize, setEraserSize] = useState(20); // 20: Medium, 40: Big
+            const trackRef = useRef(null);
+
+            const handleMeterPointerDown = (e) => {
+                setMode(null); // Deselect writing/drawing mode
+                setIsDraggingMeter(true);
+                e.target.setPointerCapture(e.pointerId);
+                updateMeterLevel(e);
+            };
+
+            const handleMeterPointerMove = (e) => {
+                if (isDraggingMeter) {
+                    updateMeterLevel(e);
+                }
+            };
+
+            const handleMeterPointerUp = (e) => {
+                setIsDraggingMeter(false);
+                e.target.releasePointerCapture(e.pointerId);
+            };
+
+            const updateMeterLevel = (e) => {
+                if (!trackRef.current) return;
+                const rect = trackRef.current.getBoundingClientRect();
+                const clientY = e.clientY;
+                const height = rect.bottom - clientY;
+                const percentage = Math.max(0, Math.min(1, height / rect.height));
+                const newLevel = Math.max(1, Math.min(7, Math.ceil(percentage * 7)));
+                setMeterLevel(newLevel);
+            };
             
             // Canvas Logic
             useEffect(() => {
@@ -477,7 +507,7 @@
                 // Set style based on mode
                 if (mode === 'erase') {
                     ctx.globalCompositeOperation = 'destination-out';
-                    ctx.lineWidth = 20;
+                    ctx.lineWidth = eraserSize;
                 } else {
                     ctx.globalCompositeOperation = 'source-over';
                     ctx.lineWidth = 3;
@@ -533,18 +563,29 @@
             const solidColor = getSolidColor(meterLevel);
             const heightPercentage = (meterLevel / 7) * 100;
 
+            const getCursorStyle = () => {
+                if (mode === 'erase') {
+                    const size = eraserSize;
+                    const svg = `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" xmlns="http://www.w3.org/2000/svg"><circle cx="${size/2}" cy="${size/2}" r="${size/2-1}" fill="rgba(255, 255, 255, 0.5)" stroke="#334155" stroke-width="2"/></svg>`;
+                    const url = `data:image/svg+xml;base64,${btoa(svg)}`;
+                    return `url("${url}") ${size/2} ${size/2}, auto`;
+                }
+                if (mode === 'draw') return 'crosshair';
+                return 'default';
+            };
+
             return (
                 <div 
-                    className="fixed inset-0 w-full h-full bg-[#FDFBF7] flex flex-col z-50"
+                    className={`fixed inset-0 w-full h-full bg-[#FDFBF7] flex flex-col z-50 transition-opacity duration-700 ease-in-out ${show ? 'opacity-100' : 'opacity-0'}`}
                     onClick={() => setMode(null)}
                 >
                     {/* Header */}
                     <div 
                         className="w-full p-2 flex justify-between items-center bg-[#FDFBF7]/95 backdrop-blur-sm shadow-sm shrink-0"
-                        onClick={(e) => e.stopPropagation()}
+                        onClick={() => setMode(null)}
                     >
                         <button 
-                            onClick={onBack}
+                            onClick={(e) => { e.stopPropagation(); onBack(); }}
                             className="w-10 h-10 flex items-center justify-center bg-white rounded-full shadow-md border border-slate-100 hover:scale-105 active:scale-95 transition-all duration-300"
                         >
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5 text-slate-600">
@@ -553,7 +594,7 @@
                         </button>
                         <h1 className="text-xl font-bold text-slate-700">記錄心情</h1>
                         <button 
-                            onClick={onHome}
+                            onClick={(e) => { e.stopPropagation(); onHome(); }}
                             className="w-10 h-10 flex items-center justify-center bg-white rounded-full shadow-md border border-slate-100 hover:scale-105 active:scale-95 transition-all duration-300"
                         >
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5 text-slate-600">
@@ -567,7 +608,7 @@
                         {/* Left Column: Emotion + Thermometer */}
                         <div 
                             className="w-1/3 max-w-[220px] flex flex-col gap-4 items-center overflow-y-auto"
-                            onClick={(e) => e.stopPropagation()}
+                            onClick={() => setMode(null)}
                         >
                             {/* Emotion Image */}
                             <div className="w-full aspect-square bg-white rounded-2xl shadow-sm border-2 border-slate-100 p-2 flex items-center justify-center shrink-0">
@@ -598,29 +639,34 @@
                                             style={{ 
                                                 height: `${heightPercentage}%`, 
                                                 backgroundColor: solidColor,
-                                                transition: 'height 0.3s ease, background-color 0.3s ease'
+                                                transition: isDraggingMeter ? 'none' : 'height 0.3s ease, background-color 0.3s ease'
                                             }}
                                         >
                                             <div className="absolute top-0 left-0 w-full h-2 bg-white/30 rounded-t-full" />
                                         </div>
 
-                                        {/* Bulb */}
+                                        {/* Interaction Track */}
                                         <div 
-                                            className="absolute -bottom-5 w-16 h-16 rounded-full border-2 border-slate-300 z-30 flex items-center justify-center shadow-md transition-colors duration-300"
-                                            style={{ backgroundColor: solidColor }}
+                                            ref={trackRef}
+                                            className="absolute inset-0 z-40 cursor-pointer touch-none"
+                                            onPointerDown={handleMeterPointerDown}
+                                            onPointerMove={handleMeterPointerMove}
+                                            onPointerUp={handleMeterPointerUp}
+                                            onPointerLeave={handleMeterPointerUp}
+                                        />
+
+                                        {/* Draggable Circle (Thumb) */}
+                                        <div 
+                                            className="absolute w-16 h-16 rounded-full border-4 border-white shadow-lg z-50 flex items-center justify-center transition-colors duration-300 pointer-events-none"
+                                            style={{ 
+                                                bottom: `${heightPercentage}%`,
+                                                left: '50%',
+                                                transform: 'translate(-50%, 50%)',
+                                                backgroundColor: solidColor,
+                                                transition: isDraggingMeter ? 'none' : 'bottom 0.3s ease, background-color 0.3s ease'
+                                            }}
                                         >
                                             <span className="text-white font-bold text-2xl drop-shadow-md">{meterLevel}</span>
-                                        </div>
-
-                                        {/* Invisible Click Area */}
-                                        <div className="absolute inset-0 z-40 flex flex-col-reverse cursor-pointer">
-                                            {[...Array(7)].map((_, i) => (
-                                                <div 
-                                                    key={i} 
-                                                    className="flex-1 w-full"
-                                                    onClick={() => setMeterLevel(i + 1)}
-                                                />
-                                            ))}
                                         </div>
                                     </div>
                                 </div>
@@ -652,16 +698,40 @@
                                         <rect x="2" y="4" width="20" height="16" rx="2" /><path d="M6 8h.001" /><path d="M10 8h.001" /><path d="M14 8h.001" /><path d="M18 8h.001" /><path d="M6 12h.001" /><path d="M10 12h.001" /><path d="M14 12h.001" /><path d="M18 12h.001" /><path d="M7 16h10" />
                                     </svg>
                                 </button>
-                                <button 
-                                    onClick={() => toggleMode('erase')}
-                                    className={`w-12 h-12 rounded-full flex items-center justify-center shadow-md transition-all ${mode === 'erase' ? 'bg-orange-500 text-white scale-110' : 'bg-white text-slate-500 hover:bg-slate-50'}`}
-                                    title="Eraser"
-                                >
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6">
-                                        <path d="M20 20H7L3 16C2 15 2 13 3 12L13 2L22 11L20 20Z" />
-                                        <path d="M17 17L7 7" />
-                                    </svg>
-                                </button>
+                                
+                                <div className="relative flex flex-col items-center">
+                                    <button 
+                                        onClick={() => toggleMode('erase')}
+                                        className={`w-12 h-12 rounded-full flex items-center justify-center shadow-md transition-all ${mode === 'erase' ? 'bg-orange-500 text-white scale-110' : 'bg-white text-slate-500 hover:bg-slate-50'}`}
+                                        title="Eraser"
+                                    >
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6">
+                                            <path d="M18 13l-5-5L3 18h10l5-5z" fill={mode === 'erase' ? 'white' : 'currentColor'} stroke="none" />
+                                            <path d="M15 6l3 3 3-3-3-3-3 3z" stroke={mode === 'erase' ? 'white' : 'currentColor'} />
+                                            <path d="M18 13l-5-5L3 18h10l5-5z" stroke={mode === 'erase' ? 'white' : 'currentColor'} fill="none" />
+                                        </svg>
+                                    </button>
+                                    
+                                    {mode === 'erase' && !isDrawing && (
+                                        <div className="absolute top-full mt-2 flex flex-col gap-2 bg-white p-1.5 rounded-xl shadow-md border border-slate-100 animate-in slide-in-from-top-2 fade-in duration-200 z-30">
+                                            <button 
+                                                onClick={(e) => { e.stopPropagation(); setEraserSize(20); }}
+                                                className={`w-8 h-8 rounded-full border-2 flex items-center justify-center transition-all ${eraserSize === 20 ? 'border-orange-500 bg-orange-50' : 'border-slate-200 hover:border-slate-300'}`}
+                                                title="Medium Eraser"
+                                            >
+                                                <div className="w-3 h-3 bg-slate-600 rounded-full" />
+                                            </button>
+                                            <button 
+                                                onClick={(e) => { e.stopPropagation(); setEraserSize(40); }}
+                                                className={`w-8 h-8 rounded-full border-2 flex items-center justify-center transition-all ${eraserSize === 40 ? 'border-orange-500 bg-orange-50' : 'border-slate-200 hover:border-slate-300'}`}
+                                                title="Big Eraser"
+                                            >
+                                                <div className="w-5 h-5 bg-slate-600 rounded-full" />
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+
                                 <button 
                                     onClick={clearAll}
                                     className="w-12 h-12 rounded-full flex items-center justify-center bg-white text-slate-500 shadow-md hover:bg-red-50 hover:text-red-500 transition-all"
@@ -676,7 +746,8 @@
                             {/* Canvas Layer */}
                             <canvas
                                 ref={canvasRef}
-                                className={`absolute inset-0 w-full h-full touch-none cursor-crosshair ${mode === 'draw' || mode === 'erase' ? 'z-10' : 'z-0 pointer-events-none'}`}
+                                className={`absolute inset-0 w-full h-full touch-none ${mode === 'draw' || mode === 'erase' ? 'z-10' : 'z-0 pointer-events-none'}`}
+                                style={{ cursor: getCursorStyle() }}
                                 onMouseDown={startDrawing}
                                 onMouseMove={draw}
                                 onMouseUp={stopDrawing}
@@ -701,8 +772,14 @@
 
         function EmotionExplorerTool({ onBack, show }) {
             const [selectedEmotion, setSelectedEmotion] = useState(null);
+            const [enlargedEmotion, setEnlargedEmotion] = useState(null);
+            const [isEnlargedVisible, setIsEnlargedVisible] = useState(false);
             const [isCompactLayout, setIsCompactLayout] = useState(false);
             const [step, setStep] = useState('select'); // 'select' | 'write'
+            const [isTransitioning, setIsTransitioning] = useState(false);
+
+            // Derived show state for children to handle internal transitions
+            const contentShow = show && !isTransitioning;
 
             useEffect(() => {
                 const checkLayout = () => {
@@ -749,14 +826,48 @@
 
             const handleEmotionClick = (e, id) => {
                 e.stopPropagation();
-                setSelectedEmotion(id);
+                if (selectedEmotion === id) {
+                    // Find the emotion object to enlarge
+                    const allEmotions = [...positiveEmotions, ...negativeEmotions];
+                    const emotion = allEmotions.find(e => e.id === id);
+                    setEnlargedEmotion(emotion);
+                    // Small delay to allow render before transition
+                    requestAnimationFrame(() => {
+                        requestAnimationFrame(() => {
+                            setIsEnlargedVisible(true);
+                        });
+                    });
+                } else {
+                    setSelectedEmotion(id);
+                }
+            };
+
+            const closeEnlarged = (e) => {
+                e.stopPropagation();
+                setIsEnlargedVisible(false);
+                setTimeout(() => {
+                    setEnlargedEmotion(null);
+                }, 700); // Match duration
             };
 
             const handleNext = (e) => {
                 e.stopPropagation();
                 if (selectedEmotion) {
-                    setStep('write');
+                    setIsTransitioning(true);
+                    setTimeout(() => {
+                        setStep('write');
+                        // Small delay to ensure render before fading in
+                        setTimeout(() => setIsTransitioning(false), 50);
+                    }, 700);
                 }
+            };
+
+            const handleBackFromWriting = () => {
+                setIsTransitioning(true);
+                setTimeout(() => {
+                    setStep('select');
+                    setTimeout(() => setIsTransitioning(false), 50);
+                }, 700);
             };
 
             // Find selected emotion data
@@ -767,8 +878,9 @@
                 return (
                     <EmotionWritingView 
                         emotion={selectedEmotionData} 
-                        onBack={() => setStep('select')}
+                        onBack={handleBackFromWriting}
                         onHome={onBack}
+                        show={contentShow}
                     />
                 );
             }
@@ -777,7 +889,7 @@
 
             return (
                 <div 
-                    className={`fixed inset-0 w-full h-full bg-[#FDFBF7] flex flex-col transition-opacity duration-700 ease-in-out ${show ? 'opacity-100' : 'opacity-0'}`}
+                    className={`fixed inset-0 w-full h-full bg-[#FDFBF7] flex flex-col transition-opacity duration-700 ease-in-out ${contentShow ? 'opacity-100' : 'opacity-0'}`}
                     onClick={() => setSelectedEmotion(null)}
                 >
                     {/* Header */}
@@ -812,7 +924,7 @@
                     {/* Content */}
                     <div className="flex-1 flex flex-col items-center gap-2 sm:gap-3 p-2 overflow-y-auto pb-4 pt-4">
                         {rows.map((row, rowIndex) => (
-                            <div key={rowIndex} className={`flex flex-wrap justify-center gap-2 sm:gap-4 xl:gap-6 ${rowIndex === 1 || (isCompactLayout && rowIndex === 3) ? 'mb-4 sm:mb-6' : ''} ${isCompactLayout && rowIndex === 4 ? 'mb-16' : ''}`}>
+                            <div key={rowIndex} className={`flex flex-wrap justify-center gap-2 sm:gap-4 xl:gap-6 ${rowIndex === 1 || (isCompactLayout && rowIndex === 3) ? 'mb-4 sm:mb-6' : ''} ${isCompactLayout && rowIndex === 4 ? 'mb-6' : ''}`}>
                                 {row.map((emotion) => {
                                     const delay = 100 + (globalIndex * 40); // Staggered delay
                                     globalIndex++;
@@ -850,6 +962,32 @@
                             </div>
                         ))}
                     </div>
+
+                    {/* Enlarged Emotion Modal */}
+                    {enlargedEmotion && (
+                        <div 
+                            className={`fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 transition-opacity duration-700 ease-in-out ${isEnlargedVisible ? 'opacity-100' : 'opacity-0'}`}
+                            onClick={closeEnlarged}
+                        >
+                            <div className={`relative w-full max-w-md aspect-square bg-white rounded-3xl shadow-2xl p-8 flex items-center justify-center transition-all duration-700 ease-out transform ${isEnlargedVisible ? 'scale-100 opacity-100' : 'scale-90 opacity-0'}`}>
+                                <img 
+                                    src={`https://github.com/epcashadhd/emotionmeter/blob/main/${enlargedEmotion.type}${enlargedEmotion.index}.png?raw=true`}
+                                    alt="Enlarged Emotion"
+                                    className="w-full h-full object-contain"
+                                    referrerPolicy="no-referrer"
+                                />
+                                <button 
+                                    className="absolute top-4 right-4 w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center hover:bg-slate-200 transition-colors"
+                                    onClick={closeEnlarged}
+                                >
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6 text-slate-600">
+                                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                    )}
                 </div>
             );
         }
