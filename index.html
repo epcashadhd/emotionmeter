@@ -418,6 +418,7 @@
             const [isDraggingMeter, setIsDraggingMeter] = useState(false);
             const [eraserSize, setEraserSize] = useState(20); // 20: Medium, 40: Big
             const [cursorPos, setCursorPos] = useState({ x: 0, y: 0 });
+            const [hasDrawn, setHasDrawn] = useState(false);
             const trackRef = useRef(null);
 
             const handleMeterPointerDown = (e) => {
@@ -527,6 +528,8 @@
                 // Only prevent default if we are drawing to avoid scrolling
                 if (e.cancelable) e.preventDefault(); 
                 
+                if (!hasDrawn) setHasDrawn(true);
+
                 const canvas = canvasRef.current;
                 const ctx = canvas.getContext('2d');
                 const rect = canvas.getBoundingClientRect();
@@ -550,6 +553,7 @@
                 const ctx = canvas.getContext('2d');
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
                 setText('');
+                setHasDrawn(false);
             };
 
             const toggleMode = (newMode) => {
@@ -784,8 +788,8 @@
                             <textarea
                                 value={text}
                                 onChange={(e) => setText(e.target.value)}
-                                placeholder="在這裡寫下你的想法..."
-                                className={`absolute inset-0 w-full h-full bg-transparent p-4 pt-14 sm:p-6 text-xl leading-relaxed resize-none focus:outline-none ${mode === 'type' ? 'z-10' : 'z-0 pointer-events-none opacity-50'}`}
+                                placeholder={hasDrawn ? "" : "在這裡寫下你的想法..."}
+                                className={`absolute inset-0 w-full h-full bg-transparent p-4 pt-16 pr-44 sm:p-6 sm:pt-24 sm:pr-56 text-base sm:text-xl leading-relaxed resize-none focus:outline-none ${mode === 'type' ? 'z-10' : 'z-0 pointer-events-none opacity-50'}`}
                             />
                         </div>
                     </div>
@@ -797,7 +801,7 @@
             const [selectedEmotion, setSelectedEmotion] = useState(null);
             const [enlargedEmotion, setEnlargedEmotion] = useState(null);
             const [isEnlargedVisible, setIsEnlargedVisible] = useState(false);
-            const [isCompactLayout, setIsCompactLayout] = useState(false);
+            const [layoutMode, setLayoutMode] = useState('desktop'); // 'mobile-portrait', 'mobile-landscape', 'tablet-portrait', 'desktop'
             const [step, setStep] = useState('select'); // 'select' | 'write'
             const [isTransitioning, setIsTransitioning] = useState(false);
 
@@ -806,11 +810,19 @@
 
             useEffect(() => {
                 const checkLayout = () => {
-                    // Check for mobile landscape (typically short height) OR tablet portrait (narrow width)
-                    const isLandscapeMobile = window.matchMedia("(max-height: 500px) and (orientation: landscape)").matches;
-                    // Include all portrait devices up to 1024px (covers mobile & tablet portrait)
-                    const isPortraitMobileOrTablet = window.matchMedia("(max-width: 1024px) and (orientation: portrait)").matches;
-                    setIsCompactLayout(isLandscapeMobile || isPortraitMobileOrTablet);
+                    const width = window.innerWidth;
+                    const height = window.innerHeight;
+                    const isLandscape = width > height;
+
+                    if (isLandscape && height <= 500) {
+                        setLayoutMode('mobile-landscape');
+                    } else if (!isLandscape && width <= 600) {
+                        setLayoutMode('mobile-portrait');
+                    } else if (!isLandscape && width <= 1024) {
+                        setLayoutMode('tablet-portrait');
+                    } else {
+                        setLayoutMode('desktop');
+                    }
                 };
                 
                 checkLayout();
@@ -823,8 +835,10 @@
             const negativeEmotions = Array.from({ length: 13 }, (_, i) => ({ id: `n${i+1}`, type: 'negative', index: i + 1 }));
 
             let rows = [];
-            if (isCompactLayout) {
-                // Mobile Landscape / Tablet Portrait: 3, 2, 3, 2, 3 pattern (Total 13)
+            const isPortrait = layoutMode === 'mobile-portrait' || layoutMode === 'tablet-portrait';
+
+            if (isPortrait) {
+                // Mobile Portrait / Tablet Portrait: 3, 2, 3, 2, 3 pattern (Total 13)
                 rows = [
                     positiveEmotions.slice(0, 3),
                     positiveEmotions.slice(3, 5),
@@ -838,7 +852,7 @@
                     negativeEmotions.slice(10, 13)
                 ];
             } else {
-                // Default: 7, 6 pattern
+                // Desktop / Mobile Landscape: 7, 6 pattern
                 rows = [
                     positiveEmotions.slice(0, 7),
                     positiveEmotions.slice(7, 13),
@@ -846,6 +860,15 @@
                     negativeEmotions.slice(7, 13)
                 ];
             }
+
+            const getSizeClass = () => {
+                switch(layoutMode) {
+                    case 'mobile-landscape': return 'w-32 h-32';
+                    case 'tablet-portrait': return 'w-52 h-52 sm:w-60 sm:h-60';
+                    case 'mobile-portrait': return 'w-24 h-24 sm:w-32 sm:h-32';
+                    default: return 'w-20 h-20 sm:w-24 sm:h-24 md:w-32 md:h-32 xl:w-36 xl:h-36 2xl:w-40 2xl:h-40';
+                }
+            };
 
             const handleEmotionClick = (e, id) => {
                 e.stopPropagation();
@@ -947,7 +970,7 @@
                     {/* Content */}
                     <div className="flex-1 flex flex-col items-center gap-2 sm:gap-3 p-2 overflow-y-auto pb-4 pt-4">
                         {rows.map((row, rowIndex) => (
-                            <div key={rowIndex} className={`flex flex-wrap justify-center gap-2 sm:gap-4 xl:gap-6 ${rowIndex === 1 || (isCompactLayout && rowIndex === 3) ? 'mb-4 sm:mb-6' : ''} ${isCompactLayout && rowIndex === 4 ? 'mb-6' : ''}`}>
+                            <div key={rowIndex} className={`flex flex-wrap justify-center gap-2 sm:gap-4 xl:gap-6 ${(!isPortrait && rowIndex === 1) || (isPortrait && rowIndex === 4) ? 'mb-4 sm:mb-6' : ''}`}>
                                 {row.map((emotion) => {
                                     const delay = 100 + (globalIndex * 40); // Staggered delay
                                     globalIndex++;
@@ -967,7 +990,7 @@
                                                     : 'hover:scale-105 opacity-90 hover:opacity-100'
                                             }`}
                                         >
-                                            <div className={`${isCompactLayout ? 'w-24 h-24 sm:w-32 sm:h-32' : 'w-20 h-20 sm:w-24 sm:h-24'} md:w-32 md:h-32 xl:w-36 xl:h-36 2xl:w-40 2xl:h-40 rounded-2xl bg-white shadow-sm border-2 flex items-center justify-center overflow-hidden transition-all duration-300 ${
+                                            <div className={`${getSizeClass()} rounded-2xl bg-white shadow-sm border-2 flex items-center justify-center overflow-hidden transition-all duration-300 ${
                                                 selectedEmotion === emotion.id 
                                                     ? 'border-orange-400 shadow-orange-200 shadow-xl ring-4 ring-orange-100' 
                                                     : 'border-slate-100 group-hover:border-orange-200'
@@ -992,7 +1015,7 @@
                             className={`fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 transition-opacity duration-700 ease-in-out ${isEnlargedVisible ? 'opacity-100' : 'opacity-0'}`}
                             onClick={closeEnlarged}
                         >
-                            <div className={`relative w-full max-w-md aspect-square bg-white rounded-3xl shadow-2xl p-8 flex items-center justify-center transition-all duration-700 ease-out transform ${isEnlargedVisible ? 'scale-100 opacity-100' : 'scale-90 opacity-0'}`}>
+                            <div className={`relative w-[min(90vw,85vh,28rem)] h-[min(90vw,85vh,28rem)] bg-white rounded-3xl shadow-2xl p-8 flex items-center justify-center transition-all duration-700 ease-out transform ${isEnlargedVisible ? 'scale-100 opacity-100' : 'scale-90 opacity-0'}`}>
                                 <img 
                                     src={`https://github.com/epcashadhd/emotionmeter/blob/main/${enlargedEmotion.type}${enlargedEmotion.index}.png?raw=true`}
                                     alt="Enlarged Emotion"
