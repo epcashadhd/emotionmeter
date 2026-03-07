@@ -805,6 +805,35 @@
             const [step, setStep] = useState('select'); // 'select' | 'write'
             const [isTransitioning, setIsTransitioning] = useState(false);
 
+            const EMOTION_DEFINITIONS = {
+                p1: { title: "開心", desc: "臉上有笑容，\n覺得心裡很舒服。" },
+                p2: { title: "平靜", desc: "呼吸很順、很慢，\n覺得環境很安全。" },
+                p3: { title: "興奮", desc: "身體很有動力，\n很想跳一跳或大聲說話。" },
+                p4: { title: "輕鬆", desc: "覺得不累，\n沒有壓力。" },
+                p5: { title: "期待", desc: "想著將來要做的事，\n覺得很棒。" },
+                p6: { title: "好感", desc: "喜歡跟這個人在一起，\n或者很喜歡這件事。" },
+                p7: { title: "自豪", desc: "我把事情做好了，\n覺得自己很棒。" },
+                p8: { title: "自信", desc: "覺得「我可以做到」，\n身體感覺很有力量。" },
+                p9: { title: "驚喜", desc: "發現事情發展得比想像中更好，\n覺得驚奇。" },
+                p10: { title: "滿足", desc: "覺得所擁有的事物或感覺已經很足夠，\n不需要額外的。" },
+                p11: { title: "感恩", desc: "發現有人對我好，或是事情很順利，\n心裡很溫馨。" },
+                p12: { title: "好奇", desc: "看到新事物，\n想要去嘗試、觀察或觸摸。" },
+                p13: { title: "舒服", desc: "身體感覺很自在，\n覺得放鬆。" },
+                n1: { title: "傷心", desc: "心裡重重的，\n想流眼淚。" },
+                n2: { title: "厭惡", desc: "看到不喜歡的東西，\n想趕快走開。" },
+                n3: { title: "擔心", desc: "一直想著，\n「如果不順利怎麼辦」。" },
+                n4: { title: "害怕", desc: "遇到危險或不喜歡的事，\n想要躲起來或逃跑。" },
+                n5: { title: "尷尬", desc: "覺得大家都在看我，\n或者覺得不自在，想躲起來。" },
+                n6: { title: "生氣", desc: "感到不滿或被冒犯，\n拳頭握緊，可能會想大叫。" },
+                n7: { title: "疲倦", desc: "身體沒力氣，\n很想睡覺或休息。" },
+                n8: { title: "失望", desc: "想要的結果沒有出現，\n覺得心裡空空的。" },
+                n9: { title: "緊張", desc: "手心出汗，心跳變快，\n不確定會發生什麼。" },
+                n10: { title: "委屈", desc: "被誤會或被不公平對待，\n心裡悶悶、酸酸的。" },
+                n11: { title: "沉悶", desc: "覺得沒有興趣、很無聊，\n甚至覺得時間過得特別慢。" },
+                n12: { title: "孤單", desc: "沒有人陪伴理解及傾訴，\n覺得只有自己一個。" },
+                n13: { title: "內疚", desc: "發現自己做錯事或傷害了別人，\n心裡很抱歉。" },
+            };
+
             // Derived show state for children to handle internal transitions
             const contentShow = show && !isTransitioning;
 
@@ -1015,15 +1044,31 @@
                             className={`fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 transition-opacity duration-700 ease-in-out ${isEnlargedVisible ? 'opacity-100' : 'opacity-0'}`}
                             onClick={closeEnlarged}
                         >
-                            <div className={`relative w-[min(90vw,85vh,28rem)] h-[min(90vw,85vh,28rem)] bg-white rounded-3xl shadow-2xl p-8 flex items-center justify-center transition-all duration-700 ease-out transform ${isEnlargedVisible ? 'scale-100 opacity-100' : 'scale-90 opacity-0'}`}>
-                                <img 
-                                    src={`https://github.com/epcashadhd/emotionmeter/blob/main/${enlargedEmotion.type}${enlargedEmotion.index}.png?raw=true`}
-                                    alt="Enlarged Emotion"
-                                    className="w-full h-full object-contain"
-                                    referrerPolicy="no-referrer"
-                                />
+                            <div 
+                                className={`relative w-[90vw] max-w-lg max-h-[85vh] bg-white rounded-3xl shadow-2xl p-6 flex flex-col items-center gap-4 transition-all duration-700 ease-out transform ${isEnlargedVisible ? 'scale-100 opacity-100' : 'scale-90 opacity-0'}`}
+                                onClick={(e) => e.stopPropagation()}
+                            >
+                                {/* Image Container - Flexible height */}
+                                <div className="flex-1 w-full min-h-0 flex items-center justify-center">
+                                    <img 
+                                        src={`https://github.com/epcashadhd/emotionmeter/blob/main/${enlargedEmotion.type}${enlargedEmotion.index}.png?raw=true`}
+                                        alt="Enlarged Emotion"
+                                        className="max-w-full max-h-full object-contain drop-shadow-md"
+                                        referrerPolicy="no-referrer"
+                                    />
+                                </div>
+
+                                {/* Definition Text */}
+                                {EMOTION_DEFINITIONS[enlargedEmotion.id] && (
+                                    <div className="w-full text-center shrink-0">
+                                        <p className="text-slate-600 text-xl font-medium leading-relaxed whitespace-pre-wrap">
+                                            {EMOTION_DEFINITIONS[enlargedEmotion.id].desc}
+                                        </p>
+                                    </div>
+                                )}
+
                                 <button 
-                                    className="absolute top-4 right-4 w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center hover:bg-slate-200 transition-colors"
+                                    className="absolute top-4 right-4 w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center hover:bg-slate-200 transition-colors shadow-sm z-10"
                                     onClick={closeEnlarged}
                                 >
                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6 text-slate-600">
