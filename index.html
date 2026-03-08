@@ -154,24 +154,24 @@
                     <svg viewBox="0 0 100 100" className="w-16 h-16 drop-shadow-sm">
                          <defs>
                             <linearGradient id="gradSearch" x1="0%" y1="0%" x2="100%" y2="100%">
-                                <stop offset="0%" style={{stopColor:'#FFEDD5', stopOpacity:1}} />
-                                <stop offset="100%" style={{stopColor:'#FED7AA', stopOpacity:1}} />
+                                <stop offset="0%" style={{stopColor:'#DBEAFE', stopOpacity:1}} />
+                                <stop offset="100%" style={{stopColor:'#BFDBFE', stopOpacity:1}} />
                             </linearGradient>
                         </defs>
                          <circle cx="50" cy="50" r="45" fill="url(#gradSearch)" />
-                         <circle cx="48" cy="48" r="18" stroke="#F97316" strokeWidth="5" fill="white" />
-                         <line x1="62" y1="62" x2="75" y2="75" stroke="#F97316" strokeWidth="7" strokeLinecap="round" />
-                         <circle cx="55" cy="40" r="4" fill="#FDBA74" />
+                         <circle cx="48" cy="48" r="18" stroke="#3B82F6" strokeWidth="5" fill="white" />
+                         <line x1="62" y1="62" x2="75" y2="75" stroke="#3B82F6" strokeWidth="7" strokeLinecap="round" />
+                         <circle cx="55" cy="40" r="4" fill="#93C5FD" />
                     </svg>
                 );
             }
             if (type === 'breath') {
                 return (
-                    <svg viewBox="0 0 100 100" className="w-16 h-16 drop-shadow-sm opacity-60">
-                        <circle cx="50" cy="50" r="45" fill="#F1F5F9" />
-                        <path d="M30 55 Q 50 25 70 55" stroke="#94A3B8" strokeWidth="4" fill="none" strokeLinecap="round" />
-                        <path d="M30 65 Q 50 35 70 65" stroke="#CBD5E1" strokeWidth="4" fill="none" strokeLinecap="round" />
-                        <circle cx="50" cy="45" r="2" fill="#94A3B8" />
+                    <svg viewBox="0 0 100 100" className="w-16 h-16 drop-shadow-sm">
+                        <circle cx="50" cy="50" r="45" fill="#ECFDF5" />
+                        <path d="M30 55 Q 50 25 70 55" stroke="#34D399" strokeWidth="4" fill="none" strokeLinecap="round" />
+                        <path d="M30 65 Q 50 35 70 65" stroke="#6EE7B7" strokeWidth="4" fill="none" strokeLinecap="round" />
+                        <circle cx="50" cy="45" r="2" fill="#34D399" />
                     </svg>
                 );
             }
@@ -241,27 +241,307 @@
 
                             <button 
                                 onClick={() => onNavigate('explorer')}
-                                className="w-full bg-white hover:bg-orange-50 active:bg-orange-100 border-2 border-orange-100 hover:border-orange-200 p-6 rounded-3xl shadow-sm hover:shadow-md transition-all duration-300 group flex items-center gap-6"
+                                className="w-full bg-white hover:bg-blue-50 active:bg-blue-100 border-2 border-blue-100 hover:border-blue-200 p-6 rounded-3xl shadow-sm hover:shadow-md transition-all duration-300 group flex items-center gap-6"
                             >
                                 <AbstractIcon type="search" />
                                 <div className="text-left">
-                                    <h3 className="text-2xl font-bold text-slate-700 group-hover:text-orange-800 transition-colors">情緒探索器</h3>
+                                    <h3 className="text-2xl font-bold text-slate-700 group-hover:text-blue-800 transition-colors">情緒探索器</h3>
                                     <p className="text-slate-400 mt-1">辨識你的情緒</p>
                                 </div>
                             </button>
 
                             <button 
-                                onClick={() => alert('即將推出！')}
-                                className="w-full bg-white/60 p-6 rounded-3xl border-2 border-slate-100 shadow-sm flex items-center gap-6 opacity-70 cursor-not-allowed"
+                                onClick={() => onNavigate('breathing')}
+                                className="w-full bg-white hover:bg-green-50 active:bg-green-100 border-2 border-green-100 hover:border-green-200 p-6 rounded-3xl shadow-sm hover:shadow-md transition-all duration-300 group flex items-center gap-6"
                             >
                                 <AbstractIcon type="breath" />
                                 <div className="text-left">
-                                    <h3 className="text-2xl font-bold text-slate-400">呼吸練習</h3>
-                                    <p className="text-slate-400 mt-1">Coming Soon</p>
+                                    <h3 className="text-2xl font-bold text-slate-700 group-hover:text-green-800 transition-colors">呼吸練習</h3>
+                                    <p className="text-slate-400 mt-1">調節呼吸，放鬆身心</p>
                                 </div>
                             </button>
                         </div>
                     </div>
+                </div>
+            );
+        }
+
+        function BreathingExercise({ onBack, show }) {
+            const [exerciseType, setExerciseType] = useState('sphere'); // 'sphere' | 'square' | 'body'
+            const [phase, setPhase] = useState('prepare'); // 'prepare' | 'inhale' | 'hold-in' | 'exhale' | 'hold-out'
+            const [bubbles, setBubbles] = useState([]);
+            const [seconds, setSeconds] = useState(0);
+            const [guideText, setGuideText] = useState('準備開始...');
+            const startTimeRef = useRef(null);
+
+            // Bubble effect
+            useEffect(() => {
+                if (phase === 'exhale') {
+                    const newBubbles = Array.from({ length: 8 }, (_, i) => ({
+                        id: Date.now() + i,
+                        angle: Math.random() * 360,
+                        distance: 100 + Math.random() * 100,
+                        size: 10 + Math.random() * 20,
+                        delay: Math.random() * 0.5
+                    }));
+                    setBubbles(newBubbles);
+                    const timer = setTimeout(() => setBubbles([]), 3500);
+                    return () => clearTimeout(timer);
+                }
+            }, [phase]);
+
+            // Timer logic
+            useEffect(() => {
+                let interval;
+                if (exerciseType === 'sphere') {
+                    const INHALE_TIME = 4000;
+                    const HOLD_TIME = 1000;
+                    const EXHALE_TIME = 4000;
+                    const TOTAL_CYCLE = INHALE_TIME + HOLD_TIME + EXHALE_TIME + HOLD_TIME;
+                    
+                    if (phase === 'prepare') {
+                        setGuideText('找一個舒適的姿勢坐好，\n準備開始深呼吸練習...');
+                        const timer = setTimeout(() => {
+                            setPhase('inhale');
+                            startTimeRef.current = Date.now();
+                        }, 3000);
+                        return () => clearTimeout(timer);
+                    }
+
+                    const updateTimer = () => {
+                        if (!startTimeRef.current) startTimeRef.current = Date.now();
+                        const elapsed = Date.now() - startTimeRef.current;
+                        const cycleTime = elapsed % TOTAL_CYCLE;
+
+                        let newPhase = phase;
+                        let newSeconds = seconds;
+
+                        if (cycleTime < INHALE_TIME) {
+                            newPhase = 'inhale';
+                            newSeconds = Math.floor(cycleTime / 1000) + 1;
+                        } else if (cycleTime < INHALE_TIME + HOLD_TIME) {
+                            newPhase = 'hold-in';
+                            newSeconds = 4;
+                        } else if (cycleTime < INHALE_TIME + HOLD_TIME + EXHALE_TIME) {
+                            newPhase = 'exhale';
+                            const exhaleProgress = cycleTime - (INHALE_TIME + HOLD_TIME);
+                            newSeconds = 4 - Math.floor(exhaleProgress / 1000);
+                        } else {
+                            newPhase = 'hold-out';
+                            newSeconds = 1;
+                        }
+
+                        if (newPhase !== phase) {
+                            setPhase(newPhase);
+                            if (newPhase === 'inhale') {
+                                if (navigator.vibrate) navigator.vibrate(50);
+                            } else if (newPhase === 'exhale') {
+                                if (navigator.vibrate) navigator.vibrate([40, 60, 40]);
+                            }
+                        }
+                        if (newSeconds !== seconds) {
+                            setSeconds(newSeconds);
+                        }
+                    };
+
+                    interval = setInterval(updateTimer, 50);
+                    return () => clearInterval(interval);
+                }
+                return () => clearInterval(interval);
+            }, [exerciseType, phase, seconds]);
+
+            const isExpanded = phase === 'inhale' || phase === 'hold-in';
+
+            return (
+                <div className={`fixed inset-0 w-full h-full bg-[#FDFBF7] flex flex-col items-center select-none overflow-hidden transition-opacity duration-700 ease-in-out ${show ? 'opacity-100' : 'opacity-0'}`}>
+                    {/* Header */}
+                    <div className="w-full p-4 flex justify-between items-center z-30 relative mobile-landscape-header">
+                        <button 
+                            onClick={onBack}
+                            className="w-10 h-10 flex items-center justify-center bg-white rounded-full shadow-md border border-slate-100 hover:scale-105 active:scale-95 transition-all duration-300"
+                        >
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5 text-slate-600">
+                                <path d="M19 12H5M12 19l-7-7 7-7" />
+                            </svg>
+                        </button>
+                    </div>
+
+                    {/* Option Buttons - Top Center */}
+                    <div className="w-full flex justify-center gap-6 z-20 mb-8 mobile-landscape-options">
+                        <button 
+                            onClick={() => { setExerciseType('sphere'); setPhase('prepare'); }}
+                            className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all duration-300 shadow-sm border-2 mobile-landscape-btn ${exerciseType === 'sphere' ? 'bg-green-100 border-green-400 scale-110' : 'bg-white border-slate-100 hover:bg-slate-50'}`}
+                        >
+                            <div className="w-6 h-6 rounded-full bg-green-400" />
+                        </button>
+                        <button 
+                            onClick={() => setExerciseType('square')}
+                            className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all duration-300 shadow-sm border-2 mobile-landscape-btn ${exerciseType === 'square' ? 'bg-blue-100 border-blue-400 scale-110' : 'bg-white border-slate-100 hover:bg-slate-50'}`}
+                        >
+                            <div className="w-6 h-6 bg-blue-400" />
+                        </button>
+                        <button 
+                            onClick={() => setExerciseType('body')}
+                            className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all duration-300 shadow-sm border-2 mobile-landscape-btn ${exerciseType === 'body' ? 'bg-orange-100 border-orange-400 scale-110' : 'bg-white border-slate-100 hover:bg-slate-50'}`}
+                        >
+                            <svg viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6 text-orange-400">
+                                <path d="M12 2a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm0 6c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
+                            </svg>
+                        </button>
+                    </div>
+
+                    {/* Exercise Content */}
+                    <div className="flex-1 w-full flex flex-col items-center justify-center relative -mt-20 mobile-landscape-scale">
+                        {exerciseType === 'sphere' && (
+                            <div className="relative flex flex-col items-center justify-center gap-12 mobile-landscape-compact">
+                                {/* Core Sphere */}
+                                <div className="relative w-64 h-64 flex items-center justify-center">
+                                    <div 
+                                        className="w-48 h-48 rounded-full transition-all duration-[4000ms] ease-[cubic-bezier(0.4,0,0.2,1)] relative z-10 flex items-center justify-center"
+                                        style={{
+                                            backgroundColor: isExpanded ? '#86EFAC' : '#A7F3D0', // Green-300 to Green-200
+                                            transform: isExpanded ? 'scale(1.5)' : 'scale(0.75)',
+                                            boxShadow: isExpanded ? '0 0 60px 20px rgba(134, 239, 172, 0.6)' : '0 0 0 0 rgba(167, 243, 208, 0)',
+                                            opacity: phase === 'prepare' ? 0.8 : 1
+                                        }}
+                                    >
+                                        {phase !== 'prepare' && (
+                                            (phase === 'hold-in' || phase === 'hold-out') ? (
+                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="w-16 h-16 text-white drop-shadow-md animate-[fadeInUp_0.5s_ease-out]">
+                                                    <circle cx="12" cy="12" r="10" />
+                                                    <line x1="10" y1="15" x2="10" y2="9" />
+                                                    <line x1="14" y1="15" x2="14" y2="9" />
+                                                </svg>
+                                            ) : (
+                                                <span 
+                                                    key={seconds} 
+                                                    className="text-5xl font-bold text-white drop-shadow-md font-mono animate-[fadeInUp_0.5s_ease-out]"
+                                                >
+                                                    {seconds}
+                                                </span>
+                                            )
+                                        )}
+                                    </div>
+
+                                    {/* Bubbles */}
+                                    {phase === 'exhale' && bubbles.map(bubble => (
+                                        <div
+                                            key={bubble.id}
+                                            className="absolute rounded-full bg-[#A7F3D0]/60 pointer-events-none"
+                                            style={{
+                                                width: bubble.size,
+                                                height: bubble.size,
+                                                left: '50%',
+                                                top: '50%',
+                                                transform: `translate(-50%, -50%) rotate(${bubble.angle}deg) translateX(${bubble.distance}px)`,
+                                                opacity: 0,
+                                                transition: `transform 3s ease-out ${bubble.delay}s, opacity 3s ease-out ${bubble.delay}s`,
+                                                animation: `bubbleFloat 3s ease-out ${bubble.delay}s forwards`
+                                            }}
+                                        />
+                                    ))}
+                                </div>
+
+                                {/* Instruction Text */}
+                                <div className="text-center h-32 flex flex-col items-center justify-center gap-3 w-full relative">
+                                    <p className={`absolute text-2xl text-slate-500 font-medium whitespace-pre-line leading-relaxed transition-opacity duration-500 ${phase === 'prepare' ? 'opacity-100 animate-pulse' : 'opacity-0 pointer-events-none'}`}>
+                                        {guideText}
+                                    </p>
+
+                                    <div className={`relative flex items-center justify-center w-full transition-opacity duration-500 ${phase === 'prepare' ? 'opacity-0' : 'opacity-100'}`}>
+                                        {/* Left Wind Logo (Inhale) */}
+                                        <div className="absolute right-[calc(50%+90px)] w-24 h-24 flex items-center justify-center pointer-events-none">
+                                            <img 
+                                                src="https://github.com/epcashadhd/emotionmeter/blob/main/breath1.png?raw=true" 
+                                                alt="Wind Inhale"
+                                                className={`w-full h-full object-contain transition-all ease-out transform ${
+                                                    phase === 'inhale' 
+                                                        ? 'opacity-100 scale-100 translate-x-24 duration-[4000ms]' 
+                                                        : phase === 'hold-in'
+                                                            ? 'opacity-0 scale-100 translate-x-24 duration-1000'
+                                                            : 'opacity-0 scale-50 -translate-x-12 duration-0'
+                                                }`}
+                                            />
+                                        </div>
+
+                                        {/* Center Text */}
+                                        <div className="flex flex-col items-center z-10 min-w-[160px]">
+                                            <h2 className={`text-6xl font-bold text-slate-700 transition-all duration-1000 ease-in-out ${isExpanded ? 'opacity-100 transform translate-y-0' : 'opacity-30 transform -translate-y-2'}`}>
+                                                {isExpanded ? '吸氣' : '呼氣'}
+                                            </h2>
+                                            <p className={`text-2xl text-slate-400 font-medium tracking-widest transition-all duration-1000 ease-in-out ${isExpanded ? 'opacity-100' : 'opacity-60'}`}>
+                                                {isExpanded ? 'INHALE' : 'EXHALE'}
+                                            </p>
+                                        </div>
+
+                                        {/* Right Wind Logo (Exhale) */}
+                                        <div className="absolute left-[calc(50%+90px)] w-24 h-24 flex items-center justify-center pointer-events-none">
+                                            <img 
+                                                src="https://github.com/epcashadhd/emotionmeter/blob/main/breath1.png?raw=true" 
+                                                alt="Wind Exhale"
+                                                className={`w-full h-full object-contain transition-all ease-out transform ${
+                                                    phase === 'exhale' 
+                                                        ? 'opacity-100 scale-100 -translate-x-4 duration-[4000ms]' 
+                                                        : phase === 'hold-out'
+                                                            ? 'opacity-0 scale-100 -translate-x-4 duration-1000'
+                                                            : 'opacity-0 scale-50 -translate-x-32 duration-0'
+                                                }`}
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    <style>{`
+                        @keyframes bubbleFloat {
+                            0% {
+                                opacity: 0.8;
+                                transform: translate(-50%, -50%) rotate(var(--angle)) translateX(60px);
+                            }
+                            100% {
+                                opacity: 0;
+                                transform: translate(-50%, -50%) rotate(var(--angle)) translateX(var(--distance));
+                            }
+                        }
+
+                        /* Mobile Landscape Optimization */
+                        @media (max-height: 500px) and (orientation: landscape) {
+                            .mobile-landscape-scale {
+                                transform: scale(0.65);
+                                transform-origin: center center;
+                                margin-top: 0 !important;
+                            }
+                            .mobile-landscape-compact {
+                                margin-top: -10px !important;
+                                gap: 1rem !important;
+                            }
+                            .mobile-landscape-btn {
+                                width: 2.5rem !important;
+                                height: 2.5rem !important;
+                            }
+                            .mobile-landscape-btn svg, .mobile-landscape-btn div {
+                                width: 1.25rem !important;
+                                height: 1.25rem !important;
+                            }
+                            .mobile-landscape-header {
+                                padding: 0.5rem !important;
+                                position: absolute !important;
+                                top: 0;
+                                left: 0;
+                                width: auto !important;
+                            }
+                            .mobile-landscape-options {
+                                margin-bottom: 0.5rem !important;
+                                position: absolute !important;
+                                top: 0.5rem;
+                                right: 1rem;
+                                width: auto !important;
+                                justify-content: flex-end !important;
+                            }
+                        }
+                    `}</style>
                 </div>
             );
         }
@@ -1263,6 +1543,13 @@
 
                     {view === 'explorer' && (
                         <EmotionExplorerTool 
+                            onBack={() => handleNavigate('menu')} 
+                            show={show}
+                        />
+                    )}
+
+                    {view === 'breathing' && (
+                        <BreathingExercise 
                             onBack={() => handleNavigate('menu')} 
                             show={show}
                         />
