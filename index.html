@@ -220,7 +220,7 @@
 
         function MainMenu({ onNavigate, show }) {
             return (
-                <div className={`min-h-screen w-full bg-[#FDFBF7] flex flex-col items-center justify-center p-6 font-main pb-32 transition-opacity duration-700 ease-in-out ${show ? 'opacity-100' : 'opacity-0'}`}>
+                <div className={`min-h-screen w-full bg-[#FDFBF7] flex flex-col items-center justify-center p-6 font-main pb-32 transition-opacity duration-700 ease-in-out select-none ${show ? 'opacity-100' : 'opacity-0'}`}>
                     <div className="max-w-md w-full space-y-8">
                         <div className="text-center space-y-2">
                             <h1 className="text-5xl font-bold text-slate-700 tracking-tight mb-2">情緒調控工具</h1>
@@ -297,7 +297,7 @@
             const heightPercentage = (level / 7) * 100;
 
             return (
-                <div className={`fixed inset-0 w-full h-full flex flex-col items-center justify-center bg-gradient-to-br ${currentGradient} p-4 font-main text-slate-800 overflow-hidden transition-opacity duration-700 ease-in-out ${show ? 'opacity-100' : 'opacity-0'}`}>
+                <div className={`fixed inset-0 w-full h-full flex flex-col items-center justify-center bg-gradient-to-br ${currentGradient} p-4 font-main text-slate-800 overflow-hidden transition-opacity duration-700 ease-in-out select-none ${show ? 'opacity-100' : 'opacity-0'}`}>
                     
                     <style>{`
                         input[type=range]::-webkit-slider-thumb {
@@ -415,16 +415,16 @@
             p3: { title: "興奮", desc: "身體很有動力，\n很想跳一跳或大聲說話。" },
             p4: { title: "輕鬆", desc: "覺得不累，\n沒有壓力。" },
             p5: { title: "期待", desc: "想著將來要做的事，\n覺得很棒。" },
-            p6: { title: "好感", desc: "喜歡跟這個人在一起，\n或者很喜歡這件事。" },
-            p7: { title: "自豪", desc: "我把事情做好了，\n覺得自己很棒。" },
+            p6: { title: "自豪", desc: "我把事情做好了，\n覺得自己很棒。" },
+            p7: { title: "好感", desc: "覺得對方很友善，\n喜歡跟這個人在一起，\n或者很喜歡這件事。" },
             p8: { title: "自信", desc: "覺得「我可以做到」，\n身體感覺很有力量。" },
-            p9: { title: "驚喜", desc: "發現事情發展得比想像中更好，\n覺得驚奇。" },
-            p10: { title: "滿足", desc: "覺得所擁有的事物或感覺已經很足夠，\n不需要額外的。" },
-            p11: { title: "感恩", desc: "發現有人對我好，或是事情很順利，\n心裡很溫馨。" },
+            p9: { title: "驚喜", desc: "發生了沒想過的好事，\n覺得很新奇，\n有一種「哇！」的感覺。" },
+            p10: { title: "滿足", desc: "覺得所擁有的事物或感覺很足夠，\n不需要額外的。" },
+            p11: { title: "感恩", desc: "發現有人對我好，\n或是事情很順利，\n心裡很溫馨。" },
             p12: { title: "好奇", desc: "看到新事物，\n想要去嘗試、觀察或觸摸。" },
             p13: { title: "舒服", desc: "身體感覺很自在，\n覺得放鬆。" },
-            n1: { title: "傷心", desc: "心裡重重的，\n想流眼淚。" },
-            n2: { title: "厭惡", desc: "看到不喜歡的東西，\n想趕快走開。" },
+            n1: { title: "傷心", desc: "心裡重重的，\n可能想流眼淚。" },
+            n2: { title: "厭惡", desc: "聞到、摸到或看到不喜歡的東西，\n想趕快走開。" },
             n3: { title: "擔心", desc: "一直想著，\n「如果不順利怎麼辦」。" },
             n4: { title: "害怕", desc: "遇到危險或不喜歡的事，\n想要躲起來或逃跑。" },
             n5: { title: "尷尬", desc: "覺得大家都在看我，\n或者覺得不自在，想躲起來。" },
@@ -488,6 +488,17 @@
                 setIsEnlargedVisible(false);
                 setTimeout(() => setEnlargedEmotion(null), 700);
             };
+
+            useEffect(() => {
+                if (!enlargedEmotion) return;
+                const handleKeyDown = (e) => {
+                    if (e.key === 'Escape') {
+                        closeEnlarged();
+                    }
+                };
+                window.addEventListener('keydown', handleKeyDown);
+                return () => window.removeEventListener('keydown', handleKeyDown);
+            }, [enlargedEmotion]);
 
             const handleMeterPointerDown = (e) => {
                 setMode(null); // Deselect writing/drawing mode
@@ -657,7 +668,7 @@
 
             return (
                 <div 
-                    className={`fixed inset-0 w-full h-full bg-[#FDFBF7] flex flex-col z-50 transition-opacity duration-700 ease-in-out ${show ? 'opacity-100' : 'opacity-0'}`}
+                    className={`fixed inset-0 w-full h-full bg-[#FDFBF7] flex flex-col z-50 transition-opacity duration-700 ease-in-out select-none ${show ? 'opacity-100' : 'opacity-0'}`}
                     onClick={() => setMode(null)}
                 >
                     {/* Header */}
@@ -860,7 +871,7 @@
                                 value={text}
                                 onChange={(e) => setText(e.target.value)}
                                 placeholder={hasDrawn ? "" : "在這裡寫下你的想法..."}
-                                className={`absolute inset-0 w-full h-full bg-transparent p-4 pt-20 pr-4 landscape:pt-6 landscape:pr-44 sm:p-6 sm:pt-24 sm:pr-12 sm:landscape:pt-8 sm:landscape:pr-56 text-base sm:text-xl leading-relaxed resize-none focus:outline-none ${mode === 'type' ? 'z-10' : 'z-0 pointer-events-none opacity-50'}`}
+                                className={`absolute inset-0 w-full h-full bg-transparent p-4 pt-20 pr-4 landscape:pt-6 landscape:pr-44 sm:p-6 sm:pt-24 sm:pr-12 sm:landscape:pt-8 sm:landscape:pr-56 text-base sm:text-xl leading-relaxed resize-none focus:outline-none select-text ${mode === 'type' ? 'z-10' : 'z-0 pointer-events-none opacity-50'}`}
                             />
                         </div>
                     </div>
@@ -1007,12 +1018,23 @@
             };
 
             const closeEnlarged = (e) => {
-                e.stopPropagation();
+                if (e) e.stopPropagation();
                 setIsEnlargedVisible(false);
                 setTimeout(() => {
                     setEnlargedEmotion(null);
                 }, 700); // Match duration
             };
+
+            useEffect(() => {
+                if (!enlargedEmotion) return;
+                const handleKeyDown = (e) => {
+                    if (e.key === 'Escape') {
+                        closeEnlarged();
+                    }
+                };
+                window.addEventListener('keydown', handleKeyDown);
+                return () => window.removeEventListener('keydown', handleKeyDown);
+            }, [enlargedEmotion]);
 
             const handleNext = (e) => {
                 e.stopPropagation();
@@ -1053,7 +1075,7 @@
 
             return (
                 <div 
-                    className={`fixed inset-0 w-full h-full bg-[#FDFBF7] flex flex-col transition-opacity duration-700 ease-in-out ${contentShow ? 'opacity-100' : 'opacity-0'}`}
+                    className={`fixed inset-0 w-full h-full bg-[#FDFBF7] flex flex-col transition-opacity duration-700 ease-in-out select-none ${contentShow ? 'opacity-100' : 'opacity-0'}`}
                     onClick={() => setSelectedEmotion(null)}
                 >
                     {/* Header */}
