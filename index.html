@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
@@ -266,6 +267,149 @@
             );
         }
 
+        function BoxBreathingTool() {
+            const [isActive, setIsActive] = useState(true); // Auto-start
+            const [startupPhase, setStartupPhase] = useState(0); // 0: Flash instruction, 1: Show labels, 2: Highlight first label, 3: Start animation
+            const [phase, setPhase] = useState(0); // 0: Inhale, 1: Hold, 2: Exhale, 3: Hold
+            const [timeLeft, setTimeLeft] = useState(4);
+            const [progress, setProgress] = useState(0);
+            const requestRef = useRef(null);
+            const startTimeRef = useRef(null);
+            const totalTimeRef = useRef(0);
+            // Increased particles from 60 to 120
+            const [particles] = useState(() => Array.from({ length: 120 }).map((_, i) => ({
+                id: i,
+                angle: Math.random() * Math.PI * 2,
+                distance: 12 + Math.random() * 26, // percentage from center
+                speed: 0.5 + Math.random() * 1.5,
+                size: 4 + Math.random() * 6,
+                opacity: 0.2 + Math.random() * 0.6
+            })));
+
+            useEffect(() => {
+                const t1 = setTimeout(() => setStartupPhase(1), 3000);
+                const t2 = setTimeout(() => setStartupPhase(2), 4000);
+                const t3 = setTimeout(() => setStartupPhase(3), 5000);
+                return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
+            }, []);
+
+            useEffect(() => {
+                if (!isActive || startupPhase < 3) {
+                    cancelAnimationFrame(requestRef.current);
+                    setPhase(0);
+                    setTimeLeft(4);
+                    setProgress(0);
+                    startTimeRef.current = null;
+                    return;
+                }
+
+                const CYCLE_DURATION = 4000; // 4 seconds per edge
+
+                const animate = (time) => {
+                    if (!startTimeRef.current) startTimeRef.current = time;
+                    const elapsed = time - startTimeRef.current;
+                    let currentProgress = elapsed / CYCLE_DURATION;
+
+                    if (currentProgress >= 1) {
+                        const overflow = elapsed % CYCLE_DURATION;
+                        currentProgress = overflow / CYCLE_DURATION;
+                        startTimeRef.current = time - overflow;
+                        setPhase(prev => {
+                            const nextPhase = (prev + 1) % 4;
+                            if (navigator.vibrate) navigator.vibrate(60);
+                            return nextPhase;
+                        });
+                    }
+
+                    setProgress(currentProgress);
+                    setTimeLeft(Math.ceil(4 - (currentProgress * 4)));
+                    totalTimeRef.current = time / 1000;
+
+                    requestRef.current = requestAnimationFrame(animate);
+                };
+
+                requestRef.current = requestAnimationFrame(animate);
+
+                return () => cancelAnimationFrame(requestRef.current);
+            }, [isActive, startupPhase]);
+
+            const continuousTime = isActive && startupPhase >= 3 ? totalTimeRef.current : 0;
+
+            return (
+                <div className="flex flex-col items-center justify-center w-full h-full animate-[fadeInUp_0.5s_ease-out] pb-24 md:pb-0">
+                    <div className="mb-12 text-center animate-[fadeIn_2s_ease-in-out]">
+                        <p className={`text-slate-500 text-xl sm:text-2xl tracking-wide font-medium transition-opacity duration-1000 ${startupPhase === 0 ? 'animate-pulse' : 'opacity-100'}`}>請跟隨光點，慢慢呼吸...</p>
+                    </div>
+                    <div className="relative w-56 h-56 sm:w-72 sm:h-72 flex items-center justify-center mt-6">
+                        
+                        {/* Outside Edge Text */}
+                        <div className="absolute -top-10 left-0 right-0 text-center transition-opacity duration-1000 ease-in-out" style={{ opacity: startupPhase < 1 ? 0 : (startupPhase >= 3 ? (phase === 0 ? 1 : 0.2) : (startupPhase === 2 ? 1 : 0.2)) }}>
+                            <span className="text-xl font-bold text-slate-600 tracking-widest whitespace-nowrap">吸氣</span>
+                        </div>
+                        <div className="absolute -right-10 sm:-right-16 top-0 bottom-0 flex items-center justify-center transition-opacity duration-1000 ease-in-out" style={{ opacity: startupPhase < 1 ? 0 : (startupPhase >= 3 ? (phase === 1 ? 1 : 0.2) : 0.2) }}>
+                            <span className="text-xl font-bold text-slate-600 tracking-widest whitespace-nowrap" style={{ writingMode: 'vertical-rl' }}>屏住呼吸</span>
+                        </div>
+                        <div className="absolute -bottom-10 left-0 right-0 text-center transition-opacity duration-1000 ease-in-out" style={{ opacity: startupPhase < 1 ? 0 : (startupPhase >= 3 ? (phase === 2 ? 1 : 0.2) : 0.2) }}>
+                            <span className="text-xl font-bold text-slate-600 tracking-widest whitespace-nowrap">呼氣</span>
+                        </div>
+                        <div className="absolute -left-10 sm:-left-16 top-0 bottom-0 flex items-center justify-center transition-opacity duration-1000 ease-in-out" style={{ opacity: startupPhase < 1 ? 0 : (startupPhase >= 3 ? (phase === 3 ? 1 : 0.2) : 0.2) }}>
+                            <span className="text-xl font-bold text-slate-600 tracking-widest whitespace-nowrap" style={{ writingMode: 'vertical-rl' }}>屏住呼吸</span>
+                        </div>
+
+                        {/* Internal Random Particles */}
+                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0">
+                            {particles.map(p => {
+                                let currentDist = 0;
+                                const minScale = 0.35; // Keep particles visible and loose during exhale
+                                if (phase === 0) currentDist = p.distance * (minScale + (1 - minScale) * progress);
+                                else if (phase === 1) currentDist = p.distance;
+                                else if (phase === 2) currentDist = p.distance * (minScale + (1 - minScale) * (1 - progress));
+                                else if (phase === 3) currentDist = p.distance * minScale;
+
+                                const floatX = Math.sin(continuousTime * p.speed + p.id) * 4;
+                                const floatY = Math.cos(continuousTime * p.speed + p.id) * 4;
+
+                                const currentAngle = p.angle + continuousTime * 0.15 * (p.id % 2 === 0 ? 1 : -1);
+
+                                const x = Math.cos(currentAngle) * currentDist + floatX;
+                                const y = Math.sin(currentAngle) * currentDist + floatY;
+
+                                return (
+                                    <div 
+                                        key={p.id}
+                                        className="absolute rounded-full bg-blue-400"
+                                        style={{
+                                            width: p.size,
+                                            height: p.size,
+                                            opacity: p.opacity,
+                                            left: `calc(50% + ${x}%)`,
+                                            top: `calc(50% + ${y}%)`,
+                                            transform: 'translate(-50%, -50%)',
+                                            transition: isActive && startupPhase >= 3 ? 'none' : 'all 0.5s ease'
+                                        }}
+                                    />
+                                )
+                            })}
+                        </div>
+
+                        {/* SVG Track and Particle */}
+                        <svg className="absolute inset-0 w-full h-full z-10" viewBox="0 0 280 280">
+                            {/* Base Track - More obvious */}
+                            <rect x="12" y="12" width="256" height="256" rx="24" fill="none" stroke="#E2E8F0" strokeWidth="4" pathLength="100" />
+                                  
+                            {/* Moving Particle - More obvious glow */}
+                            <rect x="12" y="12" width="256" height="256" rx="24" fill="none" stroke="#3B82F6" strokeWidth="12" strokeLinecap="round"
+                                  pathLength="100" 
+                                  strokeDasharray="0.1 100" 
+                                  strokeDashoffset={-(phase * 25 + progress * 25)} 
+                                  className={startupPhase < 3 ? "animate-pulse" : ""}
+                                  style={{ filter: 'drop-shadow(0 0 16px rgba(59,130,246,0.9)) drop-shadow(0 0 8px rgba(59,130,246,0.6))' }} />
+                        </svg>
+                    </div>
+                </div>
+            );
+        }
+
         function BreathingExercise({ onBack, show }) {
             const [exerciseType, setExerciseType] = useState(null); // null | 'sphere44' | 'sphere478' | 'square' | 'body'
             const [showSphereOptions, setShowSphereOptions] = useState(false);
@@ -274,6 +418,7 @@
             const [seconds, setSeconds] = useState(0);
             const [guideText, setGuideText] = useState('準備開始...');
             const startTimeRef = useRef(null);
+            const [restartKey, setRestartKey] = useState(0);
 
             // Bubble effect
             useEffect(() => {
@@ -357,36 +502,45 @@
                     return () => clearInterval(interval);
                 }
                 return () => clearInterval(interval);
-            }, [exerciseType, phase, seconds]);
+            }, [exerciseType, phase, seconds, restartKey]);
 
             const isExpanded = phase === 'inhale' || phase === 'hold-in';
             const is478 = exerciseType === 'sphere478';
-            
-            let centerTitle = '';
-            let centerSub = '';
-            if (phase === 'inhale') {
-                centerTitle = '吸氣'; centerSub = 'INHALE';
-            } else if (phase === 'exhale') {
-                centerTitle = '呼氣'; centerSub = 'EXHALE';
-            } else if (phase === 'hold-in' || phase === 'hold-out') {
-                centerTitle = '屏住呼吸'; centerSub = 'HOLD';
-            }
 
             return (
                 <div className={`fixed inset-0 w-full h-full bg-[#FDFBF7] flex flex-col items-center select-none overflow-hidden transition-opacity duration-700 ease-in-out ${show ? 'opacity-100' : 'opacity-0'}`}>
                     {/* Top Bar (Header + Options) */}
                     <div className="w-full p-4 sm:p-6 flex items-center justify-center z-30 relative min-h-[80px] mobile-landscape-topbar">
                         {/* Back Button */}
-                        <div className="absolute left-4 sm:left-6 mobile-landscape-header">
+                        <div className="absolute left-4 sm:left-6 mobile-landscape-home">
                             <button 
                                 onClick={onBack}
                                 className="w-10 h-10 flex items-center justify-center bg-white rounded-full shadow-md border border-slate-100 hover:scale-105 active:scale-95 transition-all duration-300"
                             >
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5 text-slate-600">
-                                    <path d="M19 12H5M12 19l-7-7 7-7" />
+                                    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+                                    <polyline points="9 22 9 12 15 12 15 22" />
                                 </svg>
                             </button>
                         </div>
+
+                        {/* Restart Button */}
+                        {exerciseType && (
+                            <div className="absolute right-4 sm:right-6 mobile-landscape-restart">
+                                <button 
+                                    onClick={() => {
+                                        setPhase('prepare');
+                                        setRestartKey(prev => prev + 1);
+                                    }}
+                                    className="w-10 h-10 flex items-center justify-center bg-white rounded-full shadow-md border border-slate-100 hover:scale-105 active:scale-95 transition-all duration-300"
+                                >
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5 text-slate-600">
+                                        <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+                                        <path d="M3 3v5h5" />
+                                    </svg>
+                                </button>
+                            </div>
+                        )}
 
                         {/* Option Buttons */}
                         <div className="flex justify-center gap-4 sm:gap-6 z-20 mobile-landscape-options">
@@ -400,34 +554,40 @@
                                 
                                 {/* Sub-menu for Sphere Options */}
                                 {showSphereOptions && (
-                                    <div className="absolute top-[60px] sm:top-[70px] flex gap-2 w-max animate-[fadeInUp_0.3s_ease-out]">
-                                        <button 
-                                            onClick={() => { setExerciseType('sphere44'); setShowSphereOptions(false); setPhase('prepare'); }}
-                                            className={`px-4 py-2 rounded-xl text-sm sm:text-base font-bold shadow-md transition-colors ${!is478 && exerciseType === 'sphere44' ? 'bg-green-500 text-white' : 'bg-white text-green-600 border border-green-200 hover:bg-green-50'}`}
-                                        >
-                                            4-4 呼吸
-                                        </button>
-                                        <button 
-                                            onClick={() => { setExerciseType('sphere478'); setShowSphereOptions(false); setPhase('prepare'); }}
-                                            className={`px-4 py-2 rounded-xl text-sm sm:text-base font-bold shadow-md transition-colors ${is478 ? 'bg-purple-500 text-white' : 'bg-white text-purple-600 border border-purple-200 hover:bg-purple-50'}`}
-                                        >
-                                            4-7-8 呼吸
-                                        </button>
-                                    </div>
+                                    <>
+                                        <div 
+                                            className="fixed inset-0 z-10" 
+                                            onClick={() => setShowSphereOptions(false)}
+                                        />
+                                        <div className="absolute top-[60px] sm:top-[70px] flex gap-2 w-max animate-[fadeInUp_0.3s_ease-out] z-20 mobile-landscape-submenu">
+                                            <button 
+                                                onClick={() => { setExerciseType('sphere44'); setShowSphereOptions(false); setPhase('prepare'); }}
+                                                className={`px-4 py-2 rounded-xl text-sm sm:text-base font-bold shadow-md transition-colors ${!is478 && exerciseType === 'sphere44' ? 'bg-green-500 text-white' : 'bg-white text-green-600 border border-green-200 hover:bg-green-50'}`}
+                                            >
+                                                4-4 呼吸
+                                            </button>
+                                            <button 
+                                                onClick={() => { setExerciseType('sphere478'); setShowSphereOptions(false); setPhase('prepare'); }}
+                                                className={`px-4 py-2 rounded-xl text-sm sm:text-base font-bold shadow-md transition-colors ${is478 ? 'bg-purple-500 text-white' : 'bg-white text-purple-600 border border-purple-200 hover:bg-purple-50'}`}
+                                            >
+                                                4-7-8 呼吸
+                                            </button>
+                                        </div>
+                                    </>
                                 )}
                             </div>
                             <button 
                                 onClick={() => { setExerciseType('square'); setShowSphereOptions(false); }}
                                 className={`w-12 h-12 sm:w-14 sm:h-14 rounded-2xl flex items-center justify-center transition-all duration-300 shadow-sm border-2 mobile-landscape-btn ${exerciseType === 'square' ? 'bg-blue-100 border-blue-400 scale-110' : 'bg-white border-slate-100 hover:bg-slate-50'}`}
                             >
-                                <div className="w-5 h-5 sm:w-6 sm:h-6 bg-blue-400" />
+                                <div className="w-5 h-5 sm:w-6 sm:h-6 bg-blue-400 rounded-md sm:rounded-lg" />
                             </button>
                             <button 
                                 onClick={() => { setExerciseType('body'); setShowSphereOptions(false); }}
                                 className={`w-12 h-12 sm:w-14 sm:h-14 rounded-2xl flex items-center justify-center transition-all duration-300 shadow-sm border-2 mobile-landscape-btn ${exerciseType === 'body' ? 'bg-orange-100 border-orange-400 scale-110' : 'bg-white border-slate-100 hover:bg-slate-50'}`}
                             >
                                 <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5 sm:w-6 sm:h-6 text-orange-400">
-                                    <path d="M12 2a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm0 6c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
+                                    <path d="M12 2c1.1 0 2 .9 2 2s-.9 2-2 2-2-.9-2-2 .9-2 2-2zm2 19.5V14h2.5v-4.5c0-1.1-.9-2-2-2h-5c-1.1 0-2 .9-2 2V14H10v7.5c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5v-5h1v5c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5z" />
                                 </svg>
                             </button>
                         </div>
@@ -438,7 +598,6 @@
                         {!exerciseType && (
                             <div className="text-center animate-[fadeInUp_0.5s_ease-out] px-2 w-full overflow-hidden">
                                 <h2 className="text-xl sm:text-3xl md:text-4xl font-bold text-slate-600 mb-4 whitespace-nowrap tracking-tight">請在上方選擇你想要的呼吸練習</h2>
-                                <p className="text-base sm:text-lg text-slate-400">點擊上方的圖示開始</p>
                             </div>
                         )}
                         {exerciseType && exerciseType.startsWith('sphere') && (
@@ -509,25 +668,34 @@
                                             <img 
                                                 src="https://github.com/epcashadhd/emotionmeter/blob/main/breath1.png?raw=true" 
                                                 alt="Wind Inhale"
-                                                className={`w-full h-full object-contain ease-out transform ${
-                                                    phase === 'inhale' 
+                                                className={`w-full h-full object-contain transform ${
+                                                    phase === 'inhale' || (!is478 && phase === 'hold-in')
                                                         ? 'opacity-100 scale-100 translate-x-24' 
-                                                        : phase === 'hold-in'
-                                                            ? 'opacity-0 scale-100 translate-x-24'
-                                                            : 'opacity-0 scale-50 -translate-x-12'
+                                                        : 'opacity-0 scale-50 -translate-x-12'
                                                 }`}
-                                                style={{ transition: `all ${phase === 'inhale' ? 4000 : 1000}ms ease-out` }}
+                                                style={{ 
+                                                    transitionProperty: 'opacity, transform',
+                                                    transitionDuration: phase === 'inhale' || (!is478 && phase === 'hold-in') ? '1000ms, 4000ms' : '1000ms, 0ms',
+                                                    transitionDelay: phase === 'inhale' || (!is478 && phase === 'hold-in') ? '0ms, 0ms' : '0ms, 1000ms',
+                                                    transitionTimingFunction: 'ease-out'
+                                                }}
                                             />
                                         </div>
 
                                         {/* Center Text */}
-                                        <div className="flex flex-col items-center z-10 min-w-[160px]">
-                                            <h2 className={`text-6xl font-bold text-slate-700 transition-all duration-1000 ease-in-out ${phase !== 'prepare' ? 'opacity-100 transform translate-y-0' : 'opacity-30 transform -translate-y-2'}`}>
-                                                {centerTitle}
-                                            </h2>
-                                            <p className={`text-2xl text-slate-400 font-medium tracking-widest transition-all duration-1000 ease-in-out ${phase !== 'prepare' ? 'opacity-100' : 'opacity-60'}`}>
-                                                {centerSub}
-                                            </p>
+                                        <div className="relative flex flex-col items-center justify-center z-10 min-w-[160px] h-[100px]">
+                                            <div className={`absolute flex flex-col items-center transition-all duration-1000 ease-in-out ${phase === 'inhale' || (!is478 && phase === 'hold-in') ? 'opacity-100 transform translate-y-0' : 'opacity-0 transform -translate-y-2'}`}>
+                                                <h2 className="text-6xl font-bold text-slate-700">吸氣</h2>
+                                                <p className="text-2xl text-slate-400 font-medium tracking-widest">INHALE</p>
+                                            </div>
+                                            <div className={`absolute flex flex-col items-center transition-all duration-1000 ease-in-out ${phase === 'exhale' || (!is478 && phase === 'hold-out') ? 'opacity-100 transform translate-y-0' : 'opacity-0 transform -translate-y-2'}`}>
+                                                <h2 className="text-6xl font-bold text-slate-700">呼氣</h2>
+                                                <p className="text-2xl text-slate-400 font-medium tracking-widest">EXHALE</p>
+                                            </div>
+                                            <div className={`absolute flex flex-col items-center transition-all duration-1000 ease-in-out ${is478 && (phase === 'hold-in' || phase === 'hold-out') ? 'opacity-100 transform translate-y-0' : 'opacity-0 transform -translate-y-2'}`}>
+                                                <h2 className="text-6xl font-bold text-slate-700 whitespace-nowrap">屏住呼吸</h2>
+                                                <p className="text-2xl text-slate-400 font-medium tracking-widest">HOLD</p>
+                                            </div>
                                         </div>
 
                                         {/* Right Wind Logo (Exhale) */}
@@ -535,19 +703,25 @@
                                             <img 
                                                 src="https://github.com/epcashadhd/emotionmeter/blob/main/breath1.png?raw=true" 
                                                 alt="Wind Exhale"
-                                                className={`w-full h-full object-contain ease-out transform ${
-                                                    phase === 'exhale' 
+                                                className={`w-full h-full object-contain transform ${
+                                                    phase === 'exhale' || (!is478 && phase === 'hold-out')
                                                         ? 'opacity-100 scale-100 -translate-x-4' 
-                                                        : phase === 'hold-out'
-                                                            ? 'opacity-0 scale-100 -translate-x-4'
-                                                            : 'opacity-0 scale-50 -translate-x-32'
+                                                        : 'opacity-0 scale-50 -translate-x-32'
                                                 }`}
-                                                style={{ transition: `all ${phase === 'exhale' ? (is478 ? 8000 : 4000) : 1000}ms ease-out` }}
+                                                style={{ 
+                                                    transitionProperty: 'opacity, transform',
+                                                    transitionDuration: phase === 'exhale' || (!is478 && phase === 'hold-out') ? `1000ms, ${is478 ? 8000 : 4000}ms` : '1000ms, 0ms',
+                                                    transitionDelay: phase === 'exhale' || (!is478 && phase === 'hold-out') ? '0ms, 0ms' : '0ms, 1000ms',
+                                                    transitionTimingFunction: 'ease-out'
+                                                }}
                                             />
                                         </div>
                                     </div>
                                 </div>
                             </div>
+                        )}
+                        {exerciseType === 'square' && (
+                            <BoxBreathingTool key={restartKey} />
                         )}
                     </div>
 
@@ -586,12 +760,22 @@
                                 width: 1.25rem !important;
                                 height: 1.25rem !important;
                             }
-                            .mobile-landscape-header {
+                            .mobile-landscape-home {
                                 padding: 0.5rem !important;
                                 position: absolute !important;
                                 top: 0;
                                 left: 0;
                                 width: auto !important;
+                            }
+                            .mobile-landscape-restart {
+                                padding: 0.5rem !important;
+                                position: fixed !important;
+                                bottom: 0.5rem !important;
+                                left: 0.5rem !important;
+                                top: auto !important;
+                                right: auto !important;
+                                width: auto !important;
+                                z-index: 50;
                             }
                             .mobile-landscape-options {
                                 margin-bottom: 0.5rem !important;
@@ -600,6 +784,10 @@
                                 right: 1rem;
                                 width: auto !important;
                                 justify-content: flex-end !important;
+                            }
+                            .mobile-landscape-submenu {
+                                top: 3rem !important;
+                                right: 0 !important;
                             }
                         }
                     `}</style>
