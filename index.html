@@ -272,9 +272,9 @@
             const [phase, setPhase] = useState(0); // 0: Inhale, 1: Hold, 2: Exhale, 3: Hold
             const [timeLeft, setTimeLeft] = useState(4);
             const [progress, setProgress] = useState(0);
+            const [animTime, setAnimTime] = useState(0);
             const requestRef = useRef(null);
             const startTimeRef = useRef(null);
-            const totalTimeRef = useRef(0);
             // Increased particles from 60 to 120
             const [particles] = useState(() => Array.from({ length: 120 }).map((_, i) => ({
                 id: i,
@@ -293,7 +293,7 @@
             }, []);
 
             useEffect(() => {
-                if (!isActive || startupPhase < 3) {
+                if (!isActive) {
                     cancelAnimationFrame(requestRef.current);
                     setPhase(0);
                     setTimeLeft(4);
@@ -305,6 +305,17 @@
                 const CYCLE_DURATION = 4000; // 4 seconds per edge
 
                 const animate = (time) => {
+                    setAnimTime(time / 1000);
+
+                    if (startupPhase < 3) {
+                        startTimeRef.current = null;
+                        setProgress(0);
+                        setPhase(0);
+                        setTimeLeft(4);
+                        requestRef.current = requestAnimationFrame(animate);
+                        return;
+                    }
+
                     if (!startTimeRef.current) startTimeRef.current = time;
                     const elapsed = time - startTimeRef.current;
                     let currentProgress = elapsed / CYCLE_DURATION;
@@ -322,7 +333,6 @@
 
                     setProgress(currentProgress);
                     setTimeLeft(Math.ceil(4 - (currentProgress * 4)));
-                    totalTimeRef.current = time / 1000;
 
                     requestRef.current = requestAnimationFrame(animate);
                 };
@@ -332,7 +342,7 @@
                 return () => cancelAnimationFrame(requestRef.current);
             }, [isActive, startupPhase]);
 
-            const continuousTime = isActive && startupPhase >= 3 ? totalTimeRef.current : 0;
+            const continuousTime = animTime;
 
             return (
                 <div className="flex flex-col items-center justify-center w-full h-full animate-[fadeInUp_0.5s_ease-out] pb-24 md:pb-0">
@@ -384,7 +394,7 @@
                                             left: `calc(50% + ${x}%)`,
                                             top: `calc(50% + ${y}%)`,
                                             transform: 'translate(-50%, -50%)',
-                                            transition: isActive && startupPhase >= 3 ? 'none' : 'all 0.5s ease'
+                                            transition: isActive ? 'none' : 'all 0.5s ease'
                                         }}
                                     />
                                 )
@@ -448,6 +458,7 @@
                     
                     if (phase === 'prepare') {
                         setGuideText('找一個舒適的姿勢坐好，\n準備開始深呼吸練習...');
+                        if (exerciseType === 'sphere-intro') return;
                         const timer = setTimeout(() => {
                             setPhase('inhale');
                             startTimeRef.current = Date.now();
@@ -465,7 +476,7 @@
 
                         if (cycleTime < INHALE_TIME) {
                             newPhase = 'inhale';
-                            newSeconds = Math.floor(cycleTime / 1000) + 1;
+                            newSeconds = 4 - Math.floor(cycleTime / 1000);
                         } else if (cycleTime < INHALE_TIME + HOLD_IN_TIME) {
                             newPhase = 'hold-in';
                             if (is478) {
@@ -545,7 +556,11 @@
                         <div className="flex justify-center gap-4 sm:gap-6 z-20 mobile-landscape-options">
                             <div className="relative flex flex-col items-center">
                                 <button 
-                                    onClick={() => { setShowSphereOptions(!showSphereOptions); }}
+                                    onClick={() => { 
+                                        setShowSphereOptions(true); 
+                                        setExerciseType('sphere-intro');
+                                        setPhase('prepare');
+                                    }}
                                     className={`w-12 h-12 sm:w-14 sm:h-14 rounded-2xl flex items-center justify-center transition-all duration-300 shadow-sm border-2 mobile-landscape-btn ${exerciseType && exerciseType.startsWith('sphere') ? 'bg-green-100 border-green-400 scale-110' : 'bg-white border-slate-100 hover:bg-slate-50'}`}
                                 >
                                     <div className={`w-5 h-5 sm:w-6 sm:h-6 rounded-full ${is478 ? 'bg-purple-400' : 'bg-green-400'}`} />
@@ -558,19 +573,21 @@
                                             className="fixed inset-0 z-10" 
                                             onClick={() => setShowSphereOptions(false)}
                                         />
-                                        <div className="absolute top-[60px] sm:top-[70px] left-1/2 -translate-x-1/2 flex gap-2 w-max animate-[fadeInUp_0.3s_ease-out] z-20 mobile-landscape-submenu">
-                                            <button 
-                                                onClick={() => { setExerciseType('sphere44'); setShowSphereOptions(false); setPhase('prepare'); }}
-                                                className={`px-4 py-2 rounded-xl text-sm sm:text-base font-bold shadow-md transition-colors ${!is478 && exerciseType === 'sphere44' ? 'bg-green-500 text-white' : 'bg-white text-green-600 border border-green-200 hover:bg-green-50'}`}
-                                            >
-                                                4-4 呼吸
-                                            </button>
-                                            <button 
-                                                onClick={() => { setExerciseType('sphere478'); setShowSphereOptions(false); setPhase('prepare'); }}
-                                                className={`px-4 py-2 rounded-xl text-sm sm:text-base font-bold shadow-md transition-colors ${is478 ? 'bg-purple-500 text-white' : 'bg-white text-purple-600 border border-purple-200 hover:bg-purple-50'}`}
-                                            >
-                                                4-7-8 呼吸
-                                            </button>
+                                        <div className="absolute top-[60px] sm:top-[70px] left-1/2 -translate-x-1/2 z-20 mobile-landscape-submenu">
+                                            <div className="flex gap-2 w-max animate-[fadeInUp_0.3s_ease-out]">
+                                                <button 
+                                                    onClick={() => { setExerciseType('sphere44'); setShowSphereOptions(false); setPhase('prepare'); }}
+                                                    className={`px-4 py-2 rounded-xl text-sm sm:text-base font-bold shadow-md transition-colors ${!is478 && exerciseType === 'sphere44' ? 'bg-green-500 text-white' : 'bg-white text-green-600 border border-green-200 hover:bg-green-50'}`}
+                                                >
+                                                    4-4 呼吸
+                                                </button>
+                                                <button 
+                                                    onClick={() => { setExerciseType('sphere478'); setShowSphereOptions(false); setPhase('prepare'); }}
+                                                    className={`px-4 py-2 rounded-xl text-sm sm:text-base font-bold shadow-md transition-colors ${is478 ? 'bg-purple-500 text-white' : 'bg-white text-purple-600 border border-purple-200 hover:bg-purple-50'}`}
+                                                >
+                                                    4-7-8 呼吸
+                                                </button>
+                                            </div>
                                         </div>
                                     </>
                                 )}
@@ -586,7 +603,7 @@
                                 className={`w-12 h-12 sm:w-14 sm:h-14 rounded-2xl flex items-center justify-center transition-all duration-300 shadow-sm border-2 mobile-landscape-btn ${exerciseType === 'body' ? 'bg-orange-100 border-orange-400 scale-110' : 'bg-white border-slate-100 hover:bg-slate-50'}`}
                             >
                                 <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5 sm:w-6 sm:h-6 text-orange-400">
-                                    <path d="M12 2c1.1 0 2 .9 2 2s-.9 2-2 2-2-.9-2-2 .9-2 2-2zm2 19.5V14h2.5v-4.5c0-1.1-.9-2-2-2h-5c-1.1 0-2 .9-2 2V14H10v7.5c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5v-5h1v5c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5z" />
+                                    <path d="M12 2a2 2 0 1 1 0 4 2 2 0 0 1 0-4zm-1.5 5h3a2 2 0 0 1 2 2v5.5h-1.5V22h-4v-7.5h-1.5V9a2 2 0 0 1 2-2z" />
                                 </svg>
                             </button>
                         </div>
@@ -602,7 +619,7 @@
                         {exerciseType && exerciseType.startsWith('sphere') && (
                             <div className="relative flex flex-col items-center justify-center gap-12 mobile-landscape-compact">
                                 {/* Core Sphere */}
-                                <div className="relative w-64 h-64 flex items-center justify-center">
+                                <div className={`relative w-64 h-64 flex items-center justify-center transition-opacity duration-500 ${exerciseType === 'sphere-intro' ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
                                     <div 
                                         className="w-48 h-48 rounded-full relative z-10 flex items-center justify-center"
                                         style={{
@@ -614,18 +631,7 @@
                                         }}
                                     >
                                         {phase !== 'prepare' && (
-                                            (phase === 'hold-in' || phase === 'hold-out') ? (
-                                                <div className="relative flex flex-col items-center justify-center animate-[fadeInUp_0.5s_ease-out] w-full h-full">
-                                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="w-16 h-16 text-white drop-shadow-md z-10">
-                                                        <circle cx="12" cy="12" r="10" />
-                                                        <line x1="10" y1="15" x2="10" y2="9" />
-                                                        <line x1="14" y1="15" x2="14" y2="9" />
-                                                    </svg>
-                                                    {is478 && (
-                                                        <span className="absolute bottom-6 text-2xl font-bold text-white drop-shadow-md font-mono z-10">{seconds}</span>
-                                                    )}
-                                                </div>
-                                            ) : (
+                                            (!is478 && (phase === 'hold-in' || phase === 'hold-out')) ? null : (
                                                 <span 
                                                     key={seconds} 
                                                     className="text-5xl font-bold text-white drop-shadow-md font-mono animate-[fadeInUp_0.5s_ease-out]"
