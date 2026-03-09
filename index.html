@@ -355,7 +355,7 @@
             return (
                 <div className={`fixed inset-0 w-full h-full bg-[#FDFBF7] flex flex-col items-center select-none overflow-hidden transition-opacity duration-700 ease-in-out ${show ? 'opacity-100' : 'opacity-0'}`}>
                     {/* Top Bar (Header + Options) */}
-                    <div className="w-full p-4 sm:p-6 flex items-center justify-center z-30 relative min-h-[80px]">
+                    <div className="w-full p-4 sm:p-6 flex items-center justify-center z-30 relative min-h-[80px] mobile-landscape-topbar">
                         {/* Back Button */}
                         <div className="absolute left-4 sm:left-6 mobile-landscape-header">
                             <button 
@@ -511,10 +511,14 @@
 
                         /* Mobile Landscape Optimization */
                         @media (max-height: 500px) and (orientation: landscape) {
+                            .mobile-landscape-topbar {
+                                min-height: 0 !important;
+                                padding: 0 !important;
+                            }
                             .mobile-landscape-scale {
                                 transform: scale(0.65);
                                 transform-origin: center center;
-                                margin-top: 0 !important;
+                                margin-top: -40px !important;
                             }
                             .mobile-landscape-compact {
                                 margin-top: -10px !important;
