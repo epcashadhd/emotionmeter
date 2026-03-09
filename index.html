@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
@@ -559,7 +558,7 @@
                                             className="fixed inset-0 z-10" 
                                             onClick={() => setShowSphereOptions(false)}
                                         />
-                                        <div className="absolute top-[60px] sm:top-[70px] flex gap-2 w-max animate-[fadeInUp_0.3s_ease-out] z-20 mobile-landscape-submenu">
+                                        <div className="absolute top-[60px] sm:top-[70px] left-1/2 -translate-x-1/2 flex gap-2 w-max animate-[fadeInUp_0.3s_ease-out] z-20 mobile-landscape-submenu">
                                             <button 
                                                 onClick={() => { setExerciseType('sphere44'); setShowSphereOptions(false); setPhase('prepare'); }}
                                                 className={`px-4 py-2 rounded-xl text-sm sm:text-base font-bold shadow-md transition-colors ${!is478 && exerciseType === 'sphere44' ? 'bg-green-500 text-white' : 'bg-white text-green-600 border border-green-200 hover:bg-green-50'}`}
@@ -786,8 +785,10 @@
                                 justify-content: flex-end !important;
                             }
                             .mobile-landscape-submenu {
-                                top: 3rem !important;
-                                right: 0 !important;
+                                top: 3.5rem !important;
+                                right: auto !important;
+                                left: 50% !important;
+                                transform: translateX(-50%) !important;
                             }
                         }
                     `}</style>
