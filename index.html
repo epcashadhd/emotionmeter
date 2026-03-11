@@ -85,14 +85,50 @@
         }
 
         /* Mobile Landscape Scaling */
-        @media (max-height: 450px) and (orientation: landscape) {
+        @media (max-height: 500px) and (orientation: landscape) {
             .main-card-scale {
                 transform: scale(0.55);
             }
+            .mobile-landscape-scale {
+                transform: scale(0.6);
+                transform-origin: center center;
+            }
+            .mobile-landscape-compact {
+                gap: 1rem !important;
+            }
+            .mobile-landscape-topbar {
+                min-height: 44px !important;
+                padding: 0.1rem !important;
+            }
+            .mobile-landscape-btn {
+                width: 2.25rem !important;
+                height: 2.25rem !important;
+            }
+            .mobile-landscape-submenu {
+                top: 40px !important;
+            }
+            .box-breathing-landscape-fix {
+                padding-top: 0 !important;
+                justify-content: flex-start !important;
+                gap: 1.5rem !important;
+                padding-bottom: 1rem !important;
+            }
+            .box-breathing-landscape-fix .breathing-square-container {
+                margin-top: 0.5rem !important;
+                transform: scale(0.85);
+            }
+            .box-breathing-landscape-fix .guide-sentence-container {
+                margin-top: 0 !important;
+                margin-bottom: 0 !important;
+            }
         }
-        @media (min-height: 451px) and (max-height: 650px) and (orientation: landscape) {
+        @media (min-height: 501px) and (max-height: 700px) and (orientation: landscape) {
             .main-card-scale {
                 transform: scale(0.75);
+            }
+            .mobile-landscape-scale {
+                transform: scale(0.8);
+                transform-origin: center center;
             }
         }
 
@@ -345,24 +381,21 @@
             const continuousTime = animTime;
 
             return (
-                <div className="flex flex-col items-center justify-center w-full h-full animate-[fadeInUp_0.5s_ease-out] pb-24 md:pb-0">
-                    <div className="mb-12 text-center animate-[fadeIn_2s_ease-in-out]">
-                        <p className={`text-slate-500 text-xl sm:text-2xl tracking-wide font-medium transition-opacity duration-1000 ${startupPhase === 0 ? 'animate-pulse' : 'opacity-100'}`}>請跟隨光點，慢慢呼吸...</p>
-                    </div>
-                    <div className="relative w-56 h-56 sm:w-72 sm:h-72 flex items-center justify-center mt-6">
+                <div className="flex flex-col items-center justify-center w-full h-full animate-[fadeInUp_0.5s_ease-out] box-breathing-landscape-fix gap-12 pb-12">
+                    <div className="relative w-56 h-56 sm:w-72 sm:h-72 flex items-center justify-center breathing-square-container -mt-12">
                         
                         {/* Outside Edge Text */}
-                        <div className="absolute -top-10 left-0 right-0 text-center transition-opacity duration-1000 ease-in-out" style={{ opacity: startupPhase < 1 ? 0 : (startupPhase >= 3 ? (phase === 0 ? 1 : 0.2) : (startupPhase === 2 ? 1 : 0.2)) }}>
-                            <span className="text-xl font-bold text-slate-600 tracking-widest whitespace-nowrap">吸氣</span>
+                        <div className="absolute -top-8 sm:-top-10 left-0 right-0 text-center transition-opacity duration-1000 ease-in-out" style={{ opacity: startupPhase < 1 ? 0 : (startupPhase >= 3 ? (phase === 0 ? 1 : 0.2) : (startupPhase === 2 ? 1 : 0.2)) }}>
+                            <span className="text-lg sm:text-xl font-bold text-slate-600 tracking-widest whitespace-nowrap">吸氣</span>
                         </div>
                         <div className="absolute -right-10 sm:-right-16 top-0 bottom-0 flex items-center justify-center transition-opacity duration-1000 ease-in-out" style={{ opacity: startupPhase < 1 ? 0 : (startupPhase >= 3 ? (phase === 1 ? 1 : 0.2) : 0.2) }}>
-                            <span className="text-xl font-bold text-slate-600 tracking-widest whitespace-nowrap" style={{ writingMode: 'vertical-rl' }}>屏住呼吸</span>
+                            <span className="text-lg sm:text-xl font-bold text-slate-600 tracking-widest whitespace-nowrap" style={{ writingMode: 'vertical-rl' }}>屏住呼吸</span>
                         </div>
-                        <div className="absolute -bottom-10 left-0 right-0 text-center transition-opacity duration-1000 ease-in-out" style={{ opacity: startupPhase < 1 ? 0 : (startupPhase >= 3 ? (phase === 2 ? 1 : 0.2) : 0.2) }}>
-                            <span className="text-xl font-bold text-slate-600 tracking-widest whitespace-nowrap">呼氣</span>
+                        <div className="absolute -bottom-8 sm:-bottom-10 left-0 right-0 text-center transition-opacity duration-1000 ease-in-out" style={{ opacity: startupPhase < 1 ? 0 : (startupPhase >= 3 ? (phase === 2 ? 1 : 0.2) : 0.2) }}>
+                            <span className="text-lg sm:text-xl font-bold text-slate-600 tracking-widest whitespace-nowrap">呼氣</span>
                         </div>
                         <div className="absolute -left-10 sm:-left-16 top-0 bottom-0 flex items-center justify-center transition-opacity duration-1000 ease-in-out" style={{ opacity: startupPhase < 1 ? 0 : (startupPhase >= 3 ? (phase === 3 ? 1 : 0.2) : 0.2) }}>
-                            <span className="text-xl font-bold text-slate-600 tracking-widest whitespace-nowrap" style={{ writingMode: 'vertical-rl' }}>屏住呼吸</span>
+                            <span className="text-lg sm:text-xl font-bold text-slate-600 tracking-widest whitespace-nowrap" style={{ writingMode: 'vertical-rl' }}>屏住呼吸</span>
                         </div>
 
                         {/* Internal Random Particles */}
@@ -414,6 +447,9 @@
                                   className={startupPhase < 3 ? "animate-pulse" : ""}
                                   style={{ filter: 'drop-shadow(0 0 16px rgba(59,130,246,0.9)) drop-shadow(0 0 8px rgba(59,130,246,0.6))' }} />
                         </svg>
+                    </div>
+                    <div className="text-center animate-[fadeIn_2s_ease-in-out] guide-sentence-container">
+                        <p className={`text-slate-500 text-2xl sm:text-2xl tracking-wide font-medium transition-opacity duration-1000 ${startupPhase === 0 ? 'animate-pulse' : 'opacity-100'}`}>請跟隨光點，慢慢呼吸...</p>
                     </div>
                 </div>
             );
@@ -662,7 +698,7 @@
                                 </div>
 
                                 {/* Instruction Text */}
-                                <div className="text-center h-32 flex flex-col items-center justify-center gap-3 w-full relative">
+                                <div className="text-center h-20 sm:h-32 flex flex-col items-center justify-center gap-3 w-full relative">
                                     <p className={`absolute text-2xl text-slate-500 font-medium whitespace-pre-line leading-relaxed transition-opacity duration-500 ${phase === 'prepare' ? 'opacity-100 animate-pulse' : 'opacity-0 pointer-events-none'}`}>
                                         {guideText}
                                     </p>
@@ -728,76 +764,116 @@
                         {exerciseType === 'square' && (
                             <BoxBreathingTool key={restartKey} />
                         )}
+                        {exerciseType === 'body' && (
+                            <BodyScanTool key={restartKey} />
+                        )}
                     </div>
 
                     <style>{`
-                        @keyframes bubbleFloat {
-                            0% {
-                                opacity: 0.8;
-                                transform: translate(-50%, -50%) rotate(var(--angle)) translateX(60px);
-                            }
-                            100% {
-                                opacity: 0;
-                                transform: translate(-50%, -50%) rotate(var(--angle)) translateX(var(--distance));
-                            }
+                        .body-scan-container {
+                            display: flex;
+                            flex-direction: column;
+                            align-items: center;
+                            width: 100%;
+                            max-width: 600px;
+                            margin: 0 auto;
+                            height: 100%;
+                            justify-content: center;
+                            gap: 0.75rem;
                         }
-
-                        /* Mobile Landscape Optimization */
-                        @media (max-height: 500px) and (orientation: landscape) {
-                            .mobile-landscape-topbar {
-                                min-height: 0 !important;
-                                padding: 0 !important;
-                            }
-                            .mobile-landscape-scale {
-                                transform: scale(0.65);
-                                transform-origin: center center;
-                                margin-top: -40px !important;
-                            }
-                            .mobile-landscape-compact {
-                                margin-top: -10px !important;
-                                gap: 1rem !important;
-                            }
-                            .mobile-landscape-btn {
-                                width: 2.5rem !important;
-                                height: 2.5rem !important;
-                            }
-                            .mobile-landscape-btn svg, .mobile-landscape-btn div {
-                                width: 1.25rem !important;
-                                height: 1.25rem !important;
-                            }
-                            .mobile-landscape-home {
-                                padding: 0.5rem !important;
-                                position: absolute !important;
-                                top: 0;
-                                left: 0;
-                                width: auto !important;
-                            }
-                            .mobile-landscape-restart {
-                                padding: 0.5rem !important;
-                                position: fixed !important;
-                                bottom: 0.5rem !important;
-                                left: 0.5rem !important;
-                                top: auto !important;
-                                right: auto !important;
-                                width: auto !important;
-                                z-index: 50;
-                            }
-                            .mobile-landscape-options {
-                                margin-bottom: 0.5rem !important;
-                                position: absolute !important;
-                                top: 0.5rem;
-                                right: 1rem;
-                                width: auto !important;
-                                justify-content: flex-end !important;
-                            }
-                            .mobile-landscape-submenu {
-                                top: 3.5rem !important;
-                                right: auto !important;
-                                left: 50% !important;
-                                transform: translateX(-50%) !important;
-                            }
+                        .body-image-wrapper {
+                            position: relative;
+                            width: 100%;
+                            height: auto;
+                            max-height: 85vh;
+                            aspect-ratio: 706/1000;
+                            background: transparent;
+                            border-radius: 1rem;
+                            overflow: visible;
+                            display: flex;
+                            justify-content: center;
+                            align-items: center;
+                        }
+                        .body-image {
+                            width: auto;
+                            height: auto;
+                            max-width: 100%;
+                            max-height: 100%;
+                            object-fit: contain;
+                        }
+                        .guidance-area {
+                            width: 100%;
+                            padding: 0.5rem;
+                            background: transparent;
+                            text-align: center;
+                        }
+                        @keyframes gentleFadeIn {
+                            from { opacity: 0; transform: translateY(15px); }
+                            to { opacity: 1; transform: translateY(0); }
                         }
                     `}</style>
+                </div>
+            );
+        }
+
+        function BodyScanTool() {
+            const [selectedPart, setSelectedPart] = useState(null);
+
+            const BODY_PARTS = [
+                { id: 'head', name: '頭部', top: '8.4%', left: '46.1%' },
+                { id: 'shoulders', name: '肩膀', top: '30.6%', left: '32.0%' },
+                { id: 'chest', name: '胸口', top: '39.0%', left: '57.9%' },
+                { id: 'stomach', name: '胃部', top: '56.4%', left: '50.4%' },
+                { id: 'hands', name: '手部', top: '55.0%', left: '18.9%' },
+                { id: 'feet', name: '腳部', top: '89.6%', left: '62.9%' },
+            ];
+
+            return (
+                <div className="body-scan-container animate-[gentleFadeIn_2.5s_ease-in-out]">
+                    <div className="body-image-wrapper">
+                        <div className="relative h-full aspect-[706/1000]">
+                            <img 
+                                src="https://github.com/epcashadhd/emotionmeter/blob/main/body.png?raw=true" 
+                                alt="Body Scan" 
+                                className="body-image"
+                                referrerPolicy="no-referrer"
+                            />
+                            
+                            {BODY_PARTS.map(part => (
+                                <div 
+                                    key={part.id}
+                                    onClick={() => setSelectedPart(part)}
+                                    className="absolute cursor-pointer flex items-center justify-center"
+                                    style={{ 
+                                        top: part.top, 
+                                        left: part.left,
+                                        width: '60px',
+                                        height: '60px',
+                                        transform: 'translate(-50%, -50%)',
+                                        zIndex: 10
+                                    }}
+                                >
+                                    {/* Glow effect when selected */}
+                                    {selectedPart?.id === part.id && (
+                                        <div 
+                                            className="absolute w-[100px] h-[100px] rounded-full animate-pulse pointer-events-none"
+                                            style={{ 
+                                                background: 'radial-gradient(circle, rgba(253, 224, 71, 0.8) 0%, transparent 70%)',
+                                            }}
+                                        />
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                    
+                    <div className="guidance-area">
+                        <p className="text-slate-700 text-xl sm:text-2xl font-bold leading-relaxed whitespace-nowrap overflow-hidden text-ellipsis px-2">
+                            {selectedPart 
+                                ? `現在，試著感受一下你的 ${selectedPart.name}...` 
+                                : "請點擊圖片中你感到不舒服的身體部位"}
+                        </p>
+                    </div>
                 </div>
             );
         }
@@ -1749,7 +1825,9 @@
                         // Positive emotions (1-13)
                         ...Array.from({ length: 13 }, (_, i) => `https://github.com/epcashadhd/emotionmeter/blob/main/positive${i+1}.png?raw=true`),
                         // Negative emotions (1-13)
-                        ...Array.from({ length: 13 }, (_, i) => `https://github.com/epcashadhd/emotionmeter/blob/main/negative${i+1}.png?raw=true`)
+                        ...Array.from({ length: 13 }, (_, i) => `https://github.com/epcashadhd/emotionmeter/blob/main/negative${i+1}.png?raw=true`),
+                        // Body scan image
+                        "https://github.com/epcashadhd/emotionmeter/blob/main/body.png?raw=true"
                     ];
 
                     imageUrls.forEach(url => {
