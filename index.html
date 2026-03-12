@@ -87,39 +87,46 @@
         /* Mobile Landscape Scaling */
         @media (max-height: 500px) and (orientation: landscape) {
             .main-card-scale {
-                transform: scale(0.55);
+                transform: scale(0.5);
             }
             .mobile-landscape-scale {
-                transform: scale(0.6);
-                transform-origin: center center;
+                transform: scale(0.5);
+                transform-origin: center top;
             }
             .mobile-landscape-compact {
-                gap: 1rem !important;
+                gap: 0.5rem !important;
             }
             .mobile-landscape-topbar {
-                min-height: 44px !important;
-                padding: 0.1rem !important;
+                min-height: 40px !important;
+                padding: 0 !important;
             }
             .mobile-landscape-btn {
-                width: 2.25rem !important;
-                height: 2.25rem !important;
+                width: 2rem !important;
+                height: 2rem !important;
             }
             .mobile-landscape-submenu {
-                top: 40px !important;
+                top: 36px !important;
+            }
+            .mobile-landscape-progress {
+                height: 4px !important;
+                position: absolute !important;
+                top: 0 !important;
+                left: 0 !important;
+                z-index: 50 !important;
+                background: rgba(241, 245, 249, 0.9) !important;
             }
             .box-breathing-landscape-fix {
                 padding-top: 0 !important;
-                justify-content: flex-start !important;
-                gap: 1.5rem !important;
-                padding-bottom: 1rem !important;
+                justify-content: center !important;
+                gap: 1rem !important;
+                padding-bottom: 0.5rem !important;
             }
             .box-breathing-landscape-fix .breathing-square-container {
-                margin-top: 0.5rem !important;
-                transform: scale(0.85);
+                margin-top: 0 !important;
+                transform: scale(0.7);
             }
             .box-breathing-landscape-fix .guide-sentence-container {
-                margin-top: 0 !important;
-                margin-bottom: 0 !important;
+                margin-top: -1rem !important;
             }
         }
         @media (min-height: 501px) and (max-height: 700px) and (orientation: landscape) {
@@ -458,6 +465,13 @@
         function BreathingExercise({ onBack, show }) {
             const [exerciseType, setExerciseType] = useState(null); // null | 'sphere44' | 'sphere478' | 'square' | 'body'
             const [showSphereOptions, setShowSphereOptions] = useState(false);
+            const [showSquareOptions, setShowSquareOptions] = useState(false);
+            const [selectedPattern, setSelectedPattern] = useState(null);
+            const [selectedDuration, setSelectedDuration] = useState(null);
+            const [duration, setDuration] = useState(null);
+            const [isTransitioning, setIsTransitioning] = useState(false);
+            const [exerciseStartTime, setExerciseStartTime] = useState(null);
+            const [totalProgress, setTotalProgress] = useState(0);
             const [phase, setPhase] = useState('prepare'); // 'prepare' | 'inhale' | 'hold-in' | 'exhale' | 'hold-out'
             const [bubbles, setBubbles] = useState([]);
             const [seconds, setSeconds] = useState(0);
@@ -550,6 +564,53 @@
                 return () => clearInterval(interval);
             }, [exerciseType, phase, seconds, restartKey]);
 
+            // Duration timer
+            useEffect(() => {
+                if (exerciseType && duration && duration !== 'infinite') {
+                    const timer = setTimeout(() => {
+                        setExerciseType(null);
+                        setDuration(null);
+                        setSelectedPattern(null);
+                        setSelectedDuration(null);
+                        setPhase('prepare');
+                        setTotalProgress(0);
+                    }, duration);
+                    return () => clearTimeout(timer);
+                }
+            }, [exerciseType, duration, restartKey]);
+
+            // Progress bar update
+            useEffect(() => {
+                let interval;
+                if (exerciseType && duration && duration !== 'infinite' && exerciseStartTime) {
+                    interval = setInterval(() => {
+                        const elapsed = Date.now() - exerciseStartTime;
+                        const p = Math.min((elapsed / duration) * 100, 100);
+                        setTotalProgress(p);
+                    }, 100);
+                } else {
+                    setTotalProgress(0);
+                }
+                return () => clearInterval(interval);
+            }, [exerciseType, duration, exerciseStartTime, restartKey]);
+
+            // Auto-start when both pattern and duration are selected
+            useEffect(() => {
+                if (selectedPattern && selectedDuration) {
+                    setIsTransitioning(true);
+                    const timer = setTimeout(() => {
+                        setExerciseType(selectedPattern);
+                        setDuration(selectedDuration);
+                        setPhase('prepare');
+                        setShowSphereOptions(false);
+                        setShowSquareOptions(false);
+                        setExerciseStartTime(Date.now());
+                        setIsTransitioning(false);
+                    }, 600);
+                    return () => clearTimeout(timer);
+                }
+            }, [selectedPattern, selectedDuration]);
+
             const isExpanded = phase === 'inhale' || phase === 'hold-in';
             const is478 = exerciseType === 'sphere478';
 
@@ -577,6 +638,7 @@
                                     onClick={() => {
                                         setPhase('prepare');
                                         setRestartKey(prev => prev + 1);
+                                        setExerciseStartTime(Date.now());
                                     }}
                                     className="w-10 h-10 flex items-center justify-center bg-white rounded-full shadow-md border border-slate-100 hover:scale-105 active:scale-95 transition-all duration-300"
                                 >
@@ -593,9 +655,11 @@
                             <div className="relative flex flex-col items-center">
                                 <button 
                                     onClick={() => { 
-                                        setShowSphereOptions(true); 
+                                        setShowSphereOptions(!showSphereOptions); 
+                                        setShowSquareOptions(false);
+                                        setSelectedPattern(null);
+                                        setSelectedDuration(null);
                                         setExerciseType('sphere-intro');
-                                        setPhase('prepare');
                                     }}
                                     className={`w-12 h-12 sm:w-14 sm:h-14 rounded-2xl flex items-center justify-center transition-all duration-300 shadow-sm border-2 mobile-landscape-btn ${exerciseType && exerciseType.startsWith('sphere') ? 'bg-green-100 border-green-400 scale-110' : 'bg-white border-slate-100 hover:bg-slate-50'}`}
                                 >
@@ -610,32 +674,124 @@
                                             onClick={() => setShowSphereOptions(false)}
                                         />
                                         <div className="absolute top-[60px] sm:top-[70px] left-1/2 -translate-x-1/2 z-20 mobile-landscape-submenu">
-                                            <div className="flex gap-2 w-max animate-[fadeInUp_0.3s_ease-out]">
-                                                <button 
-                                                    onClick={() => { setExerciseType('sphere44'); setShowSphereOptions(false); setPhase('prepare'); }}
-                                                    className={`px-4 py-2 rounded-xl text-sm sm:text-base font-bold shadow-md transition-colors ${!is478 && exerciseType === 'sphere44' ? 'bg-green-500 text-white' : 'bg-white text-green-600 border border-green-200 hover:bg-green-50'}`}
-                                                >
-                                                    4-4 呼吸
-                                                </button>
-                                                <button 
-                                                    onClick={() => { setExerciseType('sphere478'); setShowSphereOptions(false); setPhase('prepare'); }}
-                                                    className={`px-4 py-2 rounded-xl text-sm sm:text-base font-bold shadow-md transition-colors ${is478 ? 'bg-purple-500 text-white' : 'bg-white text-purple-600 border border-purple-200 hover:bg-purple-50'}`}
-                                                >
-                                                    4-7-8 呼吸
-                                                </button>
+                                            <div className="flex flex-col gap-3 bg-white/95 backdrop-blur-md p-4 rounded-2xl shadow-xl border border-slate-100 animate-[fadeInUp_0.3s_ease-out] w-max">
+                                                <div className="flex gap-2 justify-center">
+                                                    <button 
+                                                        onClick={() => setSelectedPattern('sphere44')}
+                                                        className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${selectedPattern === 'sphere44' ? 'bg-green-500 text-white shadow-inner' : 'bg-slate-50 text-green-600 border border-green-100 hover:bg-green-100'}`}
+                                                    >
+                                                        4-4 呼吸
+                                                    </button>
+                                                    <button 
+                                                        onClick={() => setSelectedPattern('sphere478')}
+                                                        className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${selectedPattern === 'sphere478' ? 'bg-purple-500 text-white shadow-inner' : 'bg-slate-50 text-purple-600 border border-purple-100 hover:bg-purple-100'}`}
+                                                    >
+                                                        4-7-8 呼吸
+                                                    </button>
+                                                </div>
+                                                
+                                                <div className="h-px bg-slate-100 w-full" />
+                                                
+                                                <div className="flex gap-2 justify-center">
+                                                    <button 
+                                                        onClick={() => setSelectedDuration('infinite')}
+                                                        className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${selectedDuration === 'infinite' ? 'bg-slate-800 text-white' : 'bg-slate-50 text-slate-400 border border-slate-100 hover:bg-slate-100'}`}
+                                                        title="無限"
+                                                    >
+                                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
+                                                            <path d="M18.178 8c5.096 0 5.096 8 0 8-1.761 0-3.358-1.43-4.822-4-1.464-2.57-3.061-4-4.822-4-5.096 0-5.096 8 0 8 1.761 0 3.358-1.43 4.822-4 1.464-2.57 3.061-4 4.822-4z"/>
+                                                        </svg>
+                                                    </button>
+                                                    <button 
+                                                        onClick={() => setSelectedDuration(60000)}
+                                                        className={`px-3 h-10 rounded-xl text-sm font-bold transition-all ${selectedDuration === 60000 ? 'bg-slate-800 text-white' : 'bg-slate-50 text-slate-400 border border-slate-100 hover:bg-slate-100'}`}
+                                                    >
+                                                        1m
+                                                    </button>
+                                                    <button 
+                                                        onClick={() => setSelectedDuration(120000)}
+                                                        className={`px-3 h-10 rounded-xl text-sm font-bold transition-all ${selectedDuration === 120000 ? 'bg-slate-800 text-white' : 'bg-slate-50 text-slate-400 border border-slate-100 hover:bg-slate-100'}`}
+                                                    >
+                                                        2m
+                                                    </button>
+                                                    <button 
+                                                        onClick={() => setSelectedDuration(300000)}
+                                                        className={`px-3 h-10 rounded-xl text-sm font-bold transition-all ${selectedDuration === 300000 ? 'bg-slate-800 text-white' : 'bg-slate-50 text-slate-400 border border-slate-100 hover:bg-slate-100'}`}
+                                                    >
+                                                        5m
+                                                    </button>
+                                                </div>
                                             </div>
                                         </div>
                                     </>
                                 )}
                             </div>
+
+                            <div className="relative flex flex-col items-center">
+                                <button 
+                                    onClick={() => { 
+                                        setShowSquareOptions(!showSquareOptions); 
+                                        setShowSphereOptions(false);
+                                        setSelectedPattern('square');
+                                        setSelectedDuration(null);
+                                        setExerciseType('square-intro');
+                                    }}
+                                    className={`w-12 h-12 sm:w-14 sm:h-14 rounded-2xl flex items-center justify-center transition-all duration-300 shadow-sm border-2 mobile-landscape-btn ${exerciseType === 'square' || exerciseType === 'square-intro' ? 'bg-blue-100 border-blue-400 scale-110' : 'bg-white border-slate-100 hover:bg-slate-50'}`}
+                                >
+                                    <div className="w-5 h-5 sm:w-6 sm:h-6 bg-blue-400 rounded-md sm:rounded-lg" />
+                                </button>
+
+                                {/* Sub-menu for Square Options */}
+                                {showSquareOptions && (
+                                    <>
+                                        <div 
+                                            className="fixed inset-0 z-10" 
+                                            onClick={() => setShowSquareOptions(false)}
+                                        />
+                                        <div className="absolute top-[60px] sm:top-[70px] left-1/2 -translate-x-1/2 z-20 mobile-landscape-submenu">
+                                            <div className="flex flex-col gap-3 bg-white/95 backdrop-blur-md p-4 rounded-2xl shadow-xl border border-slate-100 animate-[fadeInUp_0.3s_ease-out] w-max">
+                                                <div className="flex gap-2 justify-center">
+                                                    <button 
+                                                        onClick={() => setSelectedDuration('infinite')}
+                                                        className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${selectedDuration === 'infinite' ? 'bg-slate-800 text-white' : 'bg-slate-50 text-slate-400 border border-slate-100 hover:bg-slate-100'}`}
+                                                        title="無限"
+                                                    >
+                                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
+                                                            <path d="M18.178 8c5.096 0 5.096 8 0 8-1.761 0-3.358-1.43-4.822-4-1.464-2.57-3.061-4-4.822-4-5.096 0-5.096 8 0 8 1.761 0 3.358-1.43 4.822-4 1.464-2.57 3.061-4 4.822-4z"/>
+                                                        </svg>
+                                                    </button>
+                                                    <button 
+                                                        onClick={() => setSelectedDuration(60000)}
+                                                        className={`px-3 h-10 rounded-xl text-sm font-bold transition-all ${selectedDuration === 60000 ? 'bg-slate-800 text-white' : 'bg-slate-50 text-slate-400 border border-slate-100 hover:bg-slate-100'}`}
+                                                    >
+                                                        1m
+                                                    </button>
+                                                    <button 
+                                                        onClick={() => setSelectedDuration(120000)}
+                                                        className={`px-3 h-10 rounded-xl text-sm font-bold transition-all ${selectedDuration === 120000 ? 'bg-slate-800 text-white' : 'bg-slate-50 text-slate-400 border border-slate-100 hover:bg-slate-100'}`}
+                                                    >
+                                                        2m
+                                                    </button>
+                                                    <button 
+                                                        onClick={() => setSelectedDuration(300000)}
+                                                        className={`px-3 h-10 rounded-xl text-sm font-bold transition-all ${selectedDuration === 300000 ? 'bg-slate-800 text-white' : 'bg-slate-50 text-slate-400 border border-slate-100 hover:bg-slate-100'}`}
+                                                    >
+                                                        5m
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </>
+                                )}
+                            </div>
+
                             <button 
-                                onClick={() => { setExerciseType('square'); setShowSphereOptions(false); }}
-                                className={`w-12 h-12 sm:w-14 sm:h-14 rounded-2xl flex items-center justify-center transition-all duration-300 shadow-sm border-2 mobile-landscape-btn ${exerciseType === 'square' ? 'bg-blue-100 border-blue-400 scale-110' : 'bg-white border-slate-100 hover:bg-slate-50'}`}
-                            >
-                                <div className="w-5 h-5 sm:w-6 sm:h-6 bg-blue-400 rounded-md sm:rounded-lg" />
-                            </button>
-                            <button 
-                                onClick={() => { setExerciseType('body'); setShowSphereOptions(false); }}
+                                onClick={() => { 
+                                    setExerciseType('body'); 
+                                    setShowSphereOptions(false); 
+                                    setShowSquareOptions(false);
+                                    setDuration('infinite');
+                                }}
                                 className={`w-12 h-12 sm:w-14 sm:h-14 rounded-2xl flex items-center justify-center transition-all duration-300 shadow-sm border-2 mobile-landscape-btn ${exerciseType === 'body' ? 'bg-orange-100 border-orange-400 scale-110' : 'bg-white border-slate-100 hover:bg-slate-50'}`}
                             >
                                 <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5 sm:w-6 sm:h-6 text-orange-400">
@@ -645,11 +801,25 @@
                         </div>
                     </div>
 
+                    {/* Total Progress Bar */}
+                    {exerciseType && duration && duration !== 'infinite' && (
+                        <div className="w-full h-1 sm:h-1.5 bg-slate-100/50 relative overflow-hidden z-40 mobile-landscape-progress">
+                            <div 
+                                className="absolute top-0 left-0 h-full bg-blue-500 transition-all duration-100 ease-linear shadow-[0_0_10px_rgba(59,130,246,0.5)]"
+                                style={{ width: `${totalProgress}%` }}
+                            />
+                        </div>
+                    )}
+
                     {/* Exercise Content */}
-                    <div className={`flex-1 w-full flex flex-col items-center justify-center relative ${exerciseType === 'body' ? '' : 'mobile-landscape-scale'}`}>
-                        {!exerciseType && (
+                    <div className={`flex-1 w-full flex flex-col items-center justify-center relative transition-all duration-700 ${isTransitioning ? 'opacity-0 scale-95' : 'opacity-100 scale-100'} ${exerciseType === 'body' ? '' : 'mobile-landscape-scale'}`}>
+                        {(!exerciseType || exerciseType === 'sphere-intro' || exerciseType === 'square-intro') && (
                             <div className="text-center animate-[fadeInUp_0.5s_ease-out] px-2 w-full overflow-hidden">
-                                <h2 className="text-xl sm:text-3xl md:text-4xl font-bold text-slate-600 mb-4 whitespace-nowrap tracking-tight">請在上方選擇你想要的呼吸練習</h2>
+                                <h2 className="text-xl sm:text-3xl md:text-4xl font-bold text-slate-600 mb-4 whitespace-nowrap tracking-tight">
+                                    {exerciseType === 'sphere-intro' ? '請選擇圓球呼吸模式與時間' : 
+                                     exerciseType === 'square-intro' ? '請選擇正方形呼吸時間' : 
+                                     '請在上方選擇你想要的呼吸練習'}
+                                </h2>
                             </div>
                         )}
                         {exerciseType && exerciseType.startsWith('sphere') && (
@@ -855,6 +1025,29 @@
 
         function BodyScanTool() {
             const [selectedPart, setSelectedPart] = useState(null);
+            const [isPlaying, setIsPlaying] = useState(false);
+            const audioRef = useRef(null);
+
+            useEffect(() => {
+                const audio = new Audio("https://raw.githubusercontent.com/epcashadhd/emotionmeter/refs/heads/main/music1.mp3");
+                audio.loop = true;
+                audioRef.current = audio;
+                return () => {
+                    audio.pause();
+                    audioRef.current = null;
+                };
+            }, []);
+
+            const toggleMusic = () => {
+                if (!audioRef.current) return;
+                if (isPlaying) {
+                    audioRef.current.pause();
+                    setIsPlaying(false);
+                } else {
+                    audioRef.current.play().catch(err => console.error("Audio play failed:", err));
+                    setIsPlaying(true);
+                }
+            };
 
             const BODY_PARTS = [
                 { id: 'head', name: '頭部', top: '8.4%', left: '46.1%' },
@@ -866,7 +1059,22 @@
             ];
 
             return (
-                <div className="body-scan-container animate-[gentleFadeIn_2.5s_ease-in-out]">
+                <div className="body-scan-container animate-[gentleFadeIn_2.5s_ease-in-out] relative">
+                    {/* Music Toggle Button */}
+                    <div className="absolute top-0 right-[12%] sm:right-0 z-50 p-2 sm:p-4">
+                        <button 
+                            onClick={toggleMusic}
+                            className={`w-14 h-14 rounded-full flex items-center justify-center transition-all duration-500 transform active:scale-95 border-2 ${isPlaying ? 'bg-emerald-50 border-emerald-200 text-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.2)]' : 'bg-stone-50/50 border-stone-200 text-stone-400'}`}
+                            title={isPlaying ? "關閉音樂" : "開啟音樂"}
+                        >
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-7 h-7">
+                                <path d="M9 18V5l12-2v13"></path>
+                                <circle cx="6" cy="18" r="3"></circle>
+                                <circle cx="18" cy="16" r="3"></circle>
+                            </svg>
+                        </button>
+                    </div>
+
                     <div className="body-image-wrapper">
                         <div className="relative h-full aspect-[706/1000]">
                             <img 
@@ -917,6 +1125,29 @@
 
         function EmotionMeterTool({ onBack, show }) {
             const [level, setLevel] = useState(1);
+            const [isPlaying, setIsPlaying] = useState(false);
+            const audioRef = useRef(null);
+
+            useEffect(() => {
+                const audio = new Audio("https://raw.githubusercontent.com/epcashadhd/emotionmeter/refs/heads/main/music1.mp3");
+                audio.loop = true;
+                audioRef.current = audio;
+                return () => {
+                    audio.pause();
+                    audioRef.current = null;
+                };
+            }, []);
+
+            const toggleMusic = () => {
+                if (!audioRef.current) return;
+                if (isPlaying) {
+                    audioRef.current.pause();
+                    setIsPlaying(false);
+                } else {
+                    audioRef.current.play().catch(err => console.error("Audio play failed:", err));
+                    setIsPlaying(true);
+                }
+            };
 
             const currentState = EMOTION_LEVELS.find(e => e.id === level) || EMOTION_LEVELS[0];
 
@@ -957,7 +1188,22 @@
                         }
                     `}</style>
 
-                    <div className="main-card-scale z-10 w-full max-w-[380px] bg-white/90 backdrop-blur-xl rounded-3xl shadow-2xl p-6 sm:p-8 flex flex-col items-center gap-6 border border-white/50 transition-transform duration-300 ease-out">
+                    <div className="main-card-scale z-10 w-full max-w-[380px] bg-white/90 backdrop-blur-xl rounded-3xl shadow-2xl p-6 sm:p-8 flex flex-col items-center gap-6 border border-white/50 transition-transform duration-300 ease-out relative">
+                        {/* Music Toggle Button */}
+                        <div className="absolute top-4 right-[10%] sm:right-4 z-50">
+                            <button 
+                                onClick={toggleMusic}
+                                className={`w-12 h-12 rounded-full flex items-center justify-center transition-all duration-500 transform active:scale-95 border-2 ${isPlaying ? 'bg-emerald-50 border-emerald-200 text-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.15)]' : 'bg-stone-50/50 border-stone-200 text-stone-400'}`}
+                                title={isPlaying ? "關閉音樂" : "開啟音樂"}
+                            >
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6">
+                                    <path d="M9 18V5l12-2v13"></path>
+                                    <circle cx="6" cy="18" r="3"></circle>
+                                    <circle cx="18" cy="16" r="3"></circle>
+                                </svg>
+                            </button>
+                        </div>
+
                         <h1 className="text-6xl font-bold text-slate-800 tracking-tighter">情緒溫度計</h1>
                         
                         <div className="flex flex-row w-full justify-between items-center gap-4 sm:gap-6">
