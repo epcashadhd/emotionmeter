@@ -381,8 +381,8 @@
             const continuousTime = animTime;
 
             return (
-                <div className="flex flex-col items-center justify-center w-full h-full animate-[fadeInUp_0.5s_ease-out] box-breathing-landscape-fix gap-12 pb-12">
-                    <div className="relative w-56 h-56 sm:w-72 sm:h-72 flex items-center justify-center breathing-square-container -mt-12">
+                <div className="flex flex-col items-center justify-center w-full h-full animate-[fadeInUp_0.5s_ease-out] box-breathing-landscape-fix gap-8 sm:gap-12 pb-8 sm:pb-12">
+                    <div className="relative w-56 h-56 sm:w-72 sm:h-72 flex items-center justify-center breathing-square-container -mt-8 sm:-mt-12">
                         
                         {/* Outside Edge Text */}
                         <div className="absolute -top-8 sm:-top-10 left-0 right-0 text-center transition-opacity duration-1000 ease-in-out" style={{ opacity: startupPhase < 1 ? 0 : (startupPhase >= 3 ? (phase === 0 ? 1 : 0.2) : (startupPhase === 2 ? 1 : 0.2)) }}>
@@ -556,7 +556,7 @@
             return (
                 <div className={`fixed inset-0 w-full h-full bg-[#FDFBF7] flex flex-col items-center select-none overflow-hidden transition-opacity duration-700 ease-in-out ${show ? 'opacity-100' : 'opacity-0'}`}>
                     {/* Top Bar (Header + Options) */}
-                    <div className="w-full p-4 sm:p-6 flex items-center justify-center z-30 relative min-h-[80px] mobile-landscape-topbar">
+                    <div className="w-full p-3 sm:p-6 flex items-center justify-center z-30 relative min-h-[64px] sm:min-h-[80px] mobile-landscape-topbar">
                         {/* Back Button */}
                         <div className="absolute left-4 sm:left-6 mobile-landscape-home">
                             <button 
@@ -646,14 +646,14 @@
                     </div>
 
                     {/* Exercise Content */}
-                    <div className="flex-1 w-full flex flex-col items-center justify-center relative mobile-landscape-scale">
+                    <div className={`flex-1 w-full flex flex-col items-center justify-center relative ${exerciseType === 'body' ? '' : 'mobile-landscape-scale'}`}>
                         {!exerciseType && (
                             <div className="text-center animate-[fadeInUp_0.5s_ease-out] px-2 w-full overflow-hidden">
                                 <h2 className="text-xl sm:text-3xl md:text-4xl font-bold text-slate-600 mb-4 whitespace-nowrap tracking-tight">請在上方選擇你想要的呼吸練習</h2>
                             </div>
                         )}
                         {exerciseType && exerciseType.startsWith('sphere') && (
-                            <div className="relative flex flex-col items-center justify-center gap-12 mobile-landscape-compact">
+                            <div className="relative flex flex-col items-center justify-center gap-8 sm:gap-12 mobile-landscape-compact">
                                 {/* Core Sphere */}
                                 <div className={`relative w-64 h-64 flex items-center justify-center transition-opacity duration-500 ${exerciseType === 'sphere-intro' ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
                                     <div 
@@ -778,14 +778,15 @@
                             max-width: 600px;
                             margin: 0 auto;
                             height: 100%;
-                            justify-content: center;
-                            gap: 0.75rem;
+                            justify-content: flex-start;
+                            gap: 1rem;
+                            padding-top: 1rem;
                         }
                         .body-image-wrapper {
                             position: relative;
                             width: 100%;
                             height: auto;
-                            max-height: 85vh;
+                            max-height: 75vh;
                             aspect-ratio: 706/1000;
                             background: transparent;
                             border-radius: 1rem;
@@ -793,6 +794,42 @@
                             display: flex;
                             justify-content: center;
                             align-items: center;
+                        }
+                        /* Mobile Portrait (iPhone 13 mini etc) */
+                        @media (max-width: 480px) and (orientation: portrait) {
+                            .body-image-wrapper {
+                                max-height: 70vh;
+                            }
+                            .body-scan-container {
+                                gap: 0.5rem;
+                                padding-top: 0.5rem;
+                            }
+                        }
+                        /* Mobile Landscape */
+                        @media (orientation: landscape) and (max-height: 500px) {
+                            .body-scan-container {
+                                flex-direction: row;
+                                justify-content: center;
+                                align-items: center;
+                                gap: 2rem;
+                                padding: 0 1rem;
+                                max-width: 90%;
+                            }
+                            .body-image-wrapper {
+                                max-height: 85vh;
+                                width: auto;
+                                flex: 0 0 auto;
+                            }
+                            .guidance-area {
+                                flex: 1;
+                                text-align: left;
+                            }
+                        }
+                        /* Tablet Portrait */
+                        @media (min-width: 768px) and (max-width: 1024px) and (orientation: portrait) {
+                            .body-image-wrapper {
+                                max-height: 70vh;
+                            }
                         }
                         .body-image {
                             width: auto;
@@ -868,7 +905,7 @@
                     </div>
                     
                     <div className="guidance-area">
-                        <p className="text-slate-700 text-xl sm:text-2xl font-bold leading-relaxed whitespace-nowrap overflow-hidden text-ellipsis px-2">
+                        <p className="text-slate-700 text-xl sm:text-2xl font-bold leading-relaxed px-2">
                             {selectedPart 
                                 ? `現在，試著感受一下你的 ${selectedPart.name}...` 
                                 : "請點擊圖片中你感到不舒服的身體部位"}
