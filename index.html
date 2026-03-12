@@ -1,226 +1,1939 @@
-import React, { useState } from 'react';
-import { motion } from 'motion/react';
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>情緒溫度計 (Emotion Meter)</title>
+    
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/earlyaccess/cwtexyen.css" rel="stylesheet">
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        main: ['cwTeXYen', 'sans-serif'],
+                        sans: ['cwTeXYen', 'PingFang TC', 'Microsoft JhengHei', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
 
-// Emotion levels configuration with images
-const EMOTION_LEVELS = [
-  { id: 1, label: "開心", color: "bg-green-400", description: "心情很好，\n充滿活力！" },
-  { id: 2, label: "平靜", color: "bg-teal-400", description: "感覺放鬆，\n心情平和。" },
-  { id: 3, label: "不安", color: "bg-blue-400", description: "有點不舒服，\n心裡怪怪的。" },
-  { id: 4, label: "擔憂", color: "bg-yellow-500", description: "心裡七上八下，\n很煩惱。" },
-  { id: 5, label: "傷心", color: "bg-indigo-500", description: "非常難過，\n想哭。" },
-  { id: 6, label: "生氣", color: "bg-orange-600", description: "很生氣，\n心跳變快了！" },
-  { id: 7, label: "憤怒", color: "bg-red-700", description: "氣炸了，\n快要爆炸了！" },
-];
+    <!-- React & ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    
+    <!-- Babel for JSX -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
-export default function EmotionMeter() {
-  const [level, setLevel] = useState(4); // Default to middle (4)
-
-  const currentState = EMOTION_LEVELS.find(e => e.id === level) || EMOTION_LEVELS[0];
-
-  // Calculate gradient based on level (1-7)
-  const getGradient = (val: number) => {
-    if (val <= 1) return 'from-green-400 to-green-200';
-    if (val <= 2) return 'from-teal-400 to-teal-200';
-    if (val <= 3) return 'from-blue-400 to-blue-200';
-    if (val <= 4) return 'from-yellow-400 to-yellow-200';
-    if (val <= 5) return 'from-indigo-500 to-indigo-300';
-    if (val <= 6) return 'from-orange-600 to-orange-400';
-    return 'from-red-700 to-red-500';
-  };
-
-  const currentGradient = getGradient(level);
-
-  // Solid color for elements
-  const getSolidColor = (val: number) => {
-    if (val <= 1) return '#4ADE80'; // green-400
-    if (val <= 2) return '#2DD4BF'; // teal-400
-    if (val <= 3) return '#60A5FA'; // blue-400
-    if (val <= 4) return '#EAB308'; // yellow-500
-    if (val <= 5) return '#6366F1'; // indigo-500
-    if (val <= 6) return '#EA580C'; // orange-600
-    return '#B91C1C'; // red-700
-  };
-  const solidColor = getSolidColor(level);
-
-  // Calculate percentage for thermometer height (1-7 mapping to ~14%-100%)
-  const heightPercentage = (level / 7) * 100;
-
-  return (
-    <div className={`min-h-screen w-full flex flex-col items-center justify-start sm:justify-center bg-gradient-to-br ${currentGradient} p-4 sm:p-8 font-main text-slate-800 relative overflow-y-auto transition-all duration-700`}>
-      
-      <style>{`
+    <style>
+        body {
+            font-family: 'cwTeXYen', sans-serif;
+        }
+        /* Custom Slider Styles */
         input[type=range]::-webkit-slider-thumb {
-          -webkit-appearance: none;
-          height: 48px;
-          width: 48px;
-          border-radius: 50%;
-          background: #ffffff;
-          border: 4px solid ${solidColor};
-          cursor: pointer;
-          margin-top: -16px;
-          box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            -webkit-appearance: none;
+            height: 56px;
+            width: 56px;
+            border-radius: 50%;
+            background: #ffffff;
+            cursor: pointer;
+            margin-top: -20px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
         }
         input[type=range]::-moz-range-thumb {
-          height: 48px;
-          width: 48px;
-          border-radius: 50%;
-          background: #ffffff;
-          border: 4px solid ${solidColor};
-          cursor: pointer;
-          box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            height: 56px;
+            width: 56px;
+            border-radius: 50%;
+            background: #ffffff;
+            cursor: pointer;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
         }
         input[type=range]::-webkit-slider-runnable-track {
-          width: 100%;
-          height: 12px;
-          cursor: pointer;
-          background: rgba(255, 255, 255, 0.9);
-          border: 1px solid rgba(0, 0, 0, 0.05);
-          box-shadow: inset 0 1px 2px rgba(0,0,0,0.1);
-          border-radius: 9999px;
+            width: 100%;
+            height: 16px;
+            cursor: pointer;
+            background: rgba(255, 255, 255, 0.9);
+            border: 1px solid rgba(0, 0, 0, 0.05);
+            box-shadow: inset 0 1px 2px rgba(0,0,0,0.1);
+            border-radius: 9999px;
         }
         input[type=range]::-moz-range-track {
-          width: 100%;
-          height: 12px;
-          cursor: pointer;
-          background: rgba(255, 255, 255, 0.9);
-          border: 1px solid rgba(0, 0, 0, 0.05);
-          box-shadow: inset 0 1px 2px rgba(0,0,0,0.1);
-          border-radius: 9999px;
+            width: 100%;
+            height: 16px;
+            cursor: pointer;
+            background: rgba(255, 255, 255, 0.9);
+            border: 1px solid rgba(0, 0, 0, 0.05);
+            box-shadow: inset 0 1px 2px rgba(0,0,0,0.1);
+            border-radius: 9999px;
         }
-        
+
         /* Tablet Portrait Scaling */
         @media (min-width: 768px) and (orientation: portrait) {
-          .main-card-scale {
-            transform: scale(1.3);
-          }
+            .main-card-scale {
+                transform: scale(1.5);
+            }
         }
         @media (min-width: 1024px) and (orientation: portrait) {
-          .main-card-scale {
-            transform: scale(1.5);
-          }
+            .main-card-scale {
+                transform: scale(1.8);
+            }
         }
 
-        /* Landscape adjustments for small screens */
-        @media (max-height: 600px) {
-          .main-card-scale {
-            padding: 1rem !important;
-            gap: 1rem !important;
-          }
-          .thermometer-container {
-            height: 180px !important;
-          }
-          .bulb-container {
-            width: 80px !important;
-            height: 80px !important;
-            bottom: -1.5rem !important;
-          }
-          .bulb-text {
-            font-size: 2.5rem !important;
-          }
-          .emotion-image {
-            width: 80px !important;
-            height: 80px !important;
-          }
-          .title-text {
-            font-size: 2.5rem !important;
-          }
-          .label-text {
-            font-size: 2.5rem !important;
-          }
-          .desc-text {
-            font-size: 1.25rem !important;
-          }
-          .advice-text {
-            font-size: 1.25rem !important;
-          }
+        /* Mobile Landscape Scaling */
+        @media (max-height: 500px) and (orientation: landscape) {
+            .main-card-scale {
+                transform: scale(0.55);
+            }
+            .mobile-landscape-scale {
+                transform: scale(0.6);
+                transform-origin: center center;
+            }
+            .mobile-landscape-compact {
+                gap: 1rem !important;
+            }
+            .mobile-landscape-topbar {
+                min-height: 44px !important;
+                padding: 0.1rem !important;
+            }
+            .mobile-landscape-btn {
+                width: 2.25rem !important;
+                height: 2.25rem !important;
+            }
+            .mobile-landscape-submenu {
+                top: 40px !important;
+            }
+            .box-breathing-landscape-fix {
+                padding-top: 0 !important;
+                justify-content: flex-start !important;
+                gap: 1.5rem !important;
+                padding-bottom: 1rem !important;
+            }
+            .box-breathing-landscape-fix .breathing-square-container {
+                margin-top: 0.5rem !important;
+                transform: scale(0.85);
+            }
+            .box-breathing-landscape-fix .guide-sentence-container {
+                margin-top: 0 !important;
+                margin-bottom: 0 !important;
+            }
         }
-      `}</style>
+        @media (min-height: 501px) and (max-height: 700px) and (orientation: landscape) {
+            .main-card-scale {
+                transform: scale(0.75);
+            }
+            .mobile-landscape-scale {
+                transform: scale(0.8);
+                transform-origin: center center;
+            }
+        }
 
-      {/* Main Card */}
-      <div className="main-card-scale z-10 w-full max-w-[420px] bg-white/90 backdrop-blur-xl rounded-3xl shadow-2xl p-6 sm:p-8 flex flex-col items-center gap-4 sm:gap-6 border border-white/50 transition-all duration-300 ease-out my-4">
-        <h1 className="title-text text-4xl sm:text-6xl font-bold text-slate-800 tracking-tighter">情緒溫度計</h1>
-        
-        <div className="flex flex-row w-full justify-between items-center gap-4 sm:gap-6">
-          {/* Thermometer Visualization */}
-          <div className="thermometer-container relative h-64 sm:h-80 w-16 sm:w-24 bg-slate-100 rounded-full border-4 border-slate-300 flex flex-col justify-end items-center shadow-inner overflow-visible shrink-0">
-            {/* Ticks */}
-            <div className="absolute inset-0 z-20 flex flex-col justify-between py-4 pointer-events-none">
-              {[...Array(7)].map((_, i) => (
-                <div key={i} className={`w-full h-0.5 ${i === 0 || i === 6 ? 'bg-slate-400/50 w-1/2 mx-auto' : 'bg-slate-300/50 w-1/3 mx-auto'}`} />
-              ))}
-            </div>
+        /* Animations */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
 
-            {/* Liquid */}
-            <motion.div 
-              className="w-full relative z-10 rounded-b-full"
-              animate={{ height: `${heightPercentage}%`, backgroundColor: solidColor }}
-              transition={{ type: "spring", stiffness: 100, damping: 20 }}
-            >
-               <div className="absolute top-0 left-0 w-full h-4 bg-white/30 rounded-t-full" />
-            </motion.div>
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
 
-            {/* Bulb */}
-            <div 
-              className="bulb-container absolute -bottom-8 sm:-bottom-10 w-24 sm:w-32 h-24 sm:h-32 rounded-full border-4 border-slate-300 z-30 flex items-center justify-center shadow-lg transition-colors duration-500"
-              style={{ backgroundColor: solidColor }}
-            >
-              <span className="bulb-text text-white font-bold text-5xl sm:text-7xl drop-shadow-md">{level}</span>
-            </div>
-          </div>
+        // --- Configuration ---
+        const EMOTION_LEVELS = [
+            { id: 1, label: "開心", color: "bg-green-400", description: "心情很好，\n充滿活力！" },
+            { id: 2, label: "平靜", color: "bg-teal-400", description: "感覺放鬆，\n心情平和。" },
+            { id: 3, label: "不安", color: "bg-blue-400", description: "有點不舒服，\n心裡怪怪的。" },
+            { id: 4, label: "擔憂", color: "bg-yellow-500", description: "心裡七上八下，\n很煩惱。" },
+            { id: 5, label: "傷心", color: "bg-indigo-500", description: "非常難過，\n想哭。" },
+            { id: 6, label: "生氣", color: "bg-orange-600", description: "很生氣，\n心跳變快了！" },
+            { id: 7, label: "憤怒", color: "bg-red-700", description: "氣炸了，\n快要爆炸了！" },
+        ];
 
-          {/* Controls and Info */}
-          <div className="flex-1 flex flex-col gap-4 sm:gap-6 items-center text-center min-w-0">
+        // --- Assets ---
+        const LOGO_URL = "https://github.com/epcashadhd/emotionmeter/blob/main/sign.png?raw=true";
+
+        // --- Components ---
+
+        function AbstractIcon({ type, color }) {
+            if (type === 'meter') {
+                return (
+                    <svg viewBox="0 0 100 100" className="w-16 h-16 drop-shadow-sm">
+                        <defs>
+                            <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" style={{stopColor:'#FFEDD5', stopOpacity:1}} />
+                                <stop offset="100%" style={{stopColor:'#FED7AA', stopOpacity:1}} />
+                            </linearGradient>
+                        </defs>
+                        <circle cx="50" cy="50" r="45" fill="url(#grad1)" />
+                        <path d="M50 25 V65" stroke="#F97316" strokeWidth="6" strokeLinecap="round" />
+                        <circle cx="50" cy="70" r="10" fill="#F97316" />
+                        <circle cx="65" cy="35" r="5" fill="#FDBA74" />
+                        <circle cx="30" cy="60" r="3" fill="#FDBA74" />
+                    </svg>
+                );
+            }
+            if (type === 'search') {
+                return (
+                    <svg viewBox="0 0 100 100" className="w-16 h-16 drop-shadow-sm">
+                         <defs>
+                            <linearGradient id="gradSearch" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" style={{stopColor:'#DBEAFE', stopOpacity:1}} />
+                                <stop offset="100%" style={{stopColor:'#BFDBFE', stopOpacity:1}} />
+                            </linearGradient>
+                        </defs>
+                         <circle cx="50" cy="50" r="45" fill="url(#gradSearch)" />
+                         <circle cx="48" cy="48" r="18" stroke="#3B82F6" strokeWidth="5" fill="white" />
+                         <line x1="62" y1="62" x2="75" y2="75" stroke="#3B82F6" strokeWidth="7" strokeLinecap="round" />
+                         <circle cx="55" cy="40" r="4" fill="#93C5FD" />
+                    </svg>
+                );
+            }
+            if (type === 'breath') {
+                return (
+                    <svg viewBox="0 0 100 100" className="w-16 h-16 drop-shadow-sm">
+                        <circle cx="50" cy="50" r="45" fill="#ECFDF5" />
+                        <path d="M30 55 Q 50 25 70 55" stroke="#34D399" strokeWidth="4" fill="none" strokeLinecap="round" />
+                        <path d="M30 65 Q 50 35 70 65" stroke="#6EE7B7" strokeWidth="4" fill="none" strokeLinecap="round" />
+                        <circle cx="50" cy="45" r="2" fill="#34D399" />
+                    </svg>
+                );
+            }
+            return null;
+        }
+
+        function ReverseArrowIcon() {
+            return (
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-8 h-8 text-slate-500">
+                    <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+                    <path d="M3 3v5h5" />
+                </svg>
+            );
+        }
+
+        function FloatingLogo({ visible, show }) {
+            const [isOpen, setIsOpen] = useState(false);
+
+            if (!visible) return null;
+
+            return (
+                <div 
+                    className={`fixed bottom-6 right-6 z-50 flex flex-col items-end transition-opacity duration-700 ease-in-out ${show ? 'opacity-100' : 'opacity-0'}`}
+                    onMouseLeave={() => setIsOpen(false)}
+                >
+                    {/* Message Bubble */}
+                    <div 
+                        className={`mb-2 bg-white px-4 py-2 rounded-xl shadow-lg border border-slate-100 transform transition-all duration-500 ease-out origin-bottom-right ${isOpen ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 scale-90 translate-y-4 pointer-events-none'}`}
+                    >
+                        <p className="text-slate-600 font-bold text-sm whitespace-nowrap">本平台由教育心理學家設計</p>
+                        {/* Triangle pointer */}
+                        <div className="absolute -bottom-1.5 right-6 w-3 h-3 bg-white transform rotate-45 border-r border-b border-slate-100"></div>
+                    </div>
+
+                    {/* Logo Button - Transparent & Smaller */}
+                    <button 
+                        type="button"
+                        onClick={() => setIsOpen(!isOpen)}
+                        className="w-10 h-10 flex items-center justify-center hover:scale-105 active:scale-95 transition-transform duration-300 focus:outline-none"
+                    >
+                        <img src={LOGO_URL} alt="Logo" className="w-full h-full object-contain drop-shadow-md" />
+                    </button>
+                </div>
+            );
+        }
+
+        function MainMenu({ onNavigate, show }) {
+            return (
+                <div className={`min-h-screen w-full bg-[#FDFBF7] flex flex-col items-center justify-center p-6 font-main pb-32 transition-opacity duration-700 ease-in-out select-none ${show ? 'opacity-100' : 'opacity-0'}`}>
+                    <div className="max-w-md w-full space-y-8">
+                        <div className="text-center space-y-2">
+                            <h1 className="text-5xl font-bold text-slate-700 tracking-tight mb-2">情緒調控工具</h1>
+                            <p className="text-xl text-slate-500">選擇適合你的練習</p>
+                        </div>
+
+                        <div className="space-y-4">
+                            <button 
+                                onClick={() => onNavigate('meter')}
+                                className="w-full bg-white hover:bg-orange-50 active:bg-orange-100 border-2 border-orange-100 hover:border-orange-200 p-6 rounded-3xl shadow-sm hover:shadow-md transition-all duration-300 group flex items-center gap-6"
+                            >
+                                <AbstractIcon type="meter" />
+                                <div className="text-left">
+                                    <h3 className="text-2xl font-bold text-slate-700 group-hover:text-orange-800 transition-colors">情緒溫度計</h3>
+                                    <p className="text-slate-400 mt-1">覺察當下的情緒能量</p>
+                                </div>
+                            </button>
+
+                            <button 
+                                onClick={() => onNavigate('explorer')}
+                                className="w-full bg-white hover:bg-blue-50 active:bg-blue-100 border-2 border-blue-100 hover:border-blue-200 p-6 rounded-3xl shadow-sm hover:shadow-md transition-all duration-300 group flex items-center gap-6"
+                            >
+                                <AbstractIcon type="search" />
+                                <div className="text-left">
+                                    <h3 className="text-2xl font-bold text-slate-700 group-hover:text-blue-800 transition-colors">情緒探索器</h3>
+                                    <p className="text-slate-400 mt-1">辨識你的情緒</p>
+                                </div>
+                            </button>
+
+                            <button 
+                                onClick={() => onNavigate('breathing')}
+                                className="w-full bg-white hover:bg-green-50 active:bg-green-100 border-2 border-green-100 hover:border-green-200 p-6 rounded-3xl shadow-sm hover:shadow-md transition-all duration-300 group flex items-center gap-6"
+                            >
+                                <AbstractIcon type="breath" />
+                                <div className="text-left">
+                                    <h3 className="text-2xl font-bold text-slate-700 group-hover:text-green-800 transition-colors">呼吸練習</h3>
+                                    <p className="text-slate-400 mt-1">調節呼吸，放鬆身心</p>
+                                </div>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        function BoxBreathingTool() {
+            const [isActive, setIsActive] = useState(true); // Auto-start
+            const [startupPhase, setStartupPhase] = useState(0); // 0: Flash instruction, 1: Show labels, 2: Highlight first label, 3: Start animation
+            const [phase, setPhase] = useState(0); // 0: Inhale, 1: Hold, 2: Exhale, 3: Hold
+            const [timeLeft, setTimeLeft] = useState(4);
+            const [progress, setProgress] = useState(0);
+            const [animTime, setAnimTime] = useState(0);
+            const requestRef = useRef(null);
+            const startTimeRef = useRef(null);
+            // Increased particles from 60 to 120
+            const [particles] = useState(() => Array.from({ length: 120 }).map((_, i) => ({
+                id: i,
+                angle: Math.random() * Math.PI * 2,
+                distance: 12 + Math.random() * 26, // percentage from center
+                speed: 0.5 + Math.random() * 1.5,
+                size: 4 + Math.random() * 6,
+                opacity: 0.2 + Math.random() * 0.6
+            })));
+
+            useEffect(() => {
+                const t1 = setTimeout(() => setStartupPhase(1), 3000);
+                const t2 = setTimeout(() => setStartupPhase(2), 4000);
+                const t3 = setTimeout(() => setStartupPhase(3), 5000);
+                return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
+            }, []);
+
+            useEffect(() => {
+                if (!isActive) {
+                    cancelAnimationFrame(requestRef.current);
+                    setPhase(0);
+                    setTimeLeft(4);
+                    setProgress(0);
+                    startTimeRef.current = null;
+                    return;
+                }
+
+                const CYCLE_DURATION = 4000; // 4 seconds per edge
+
+                const animate = (time) => {
+                    setAnimTime(time / 1000);
+
+                    if (startupPhase < 3) {
+                        startTimeRef.current = null;
+                        setProgress(0);
+                        setPhase(0);
+                        setTimeLeft(4);
+                        requestRef.current = requestAnimationFrame(animate);
+                        return;
+                    }
+
+                    if (!startTimeRef.current) startTimeRef.current = time;
+                    const elapsed = time - startTimeRef.current;
+                    let currentProgress = elapsed / CYCLE_DURATION;
+
+                    if (currentProgress >= 1) {
+                        const overflow = elapsed % CYCLE_DURATION;
+                        currentProgress = overflow / CYCLE_DURATION;
+                        startTimeRef.current = time - overflow;
+                        setPhase(prev => {
+                            const nextPhase = (prev + 1) % 4;
+                            if (navigator.vibrate) navigator.vibrate(60);
+                            return nextPhase;
+                        });
+                    }
+
+                    setProgress(currentProgress);
+                    setTimeLeft(Math.ceil(4 - (currentProgress * 4)));
+
+                    requestRef.current = requestAnimationFrame(animate);
+                };
+
+                requestRef.current = requestAnimationFrame(animate);
+
+                return () => cancelAnimationFrame(requestRef.current);
+            }, [isActive, startupPhase]);
+
+            const continuousTime = animTime;
+
+            return (
+                <div className="flex flex-col items-center justify-center w-full h-full animate-[fadeInUp_0.5s_ease-out] box-breathing-landscape-fix gap-8 sm:gap-12 pb-8 sm:pb-12">
+                    <div className="relative w-56 h-56 sm:w-72 sm:h-72 flex items-center justify-center breathing-square-container -mt-8 sm:-mt-12">
+                        
+                        {/* Outside Edge Text */}
+                        <div className="absolute -top-8 sm:-top-10 left-0 right-0 text-center transition-opacity duration-1000 ease-in-out" style={{ opacity: startupPhase < 1 ? 0 : (startupPhase >= 3 ? (phase === 0 ? 1 : 0.2) : (startupPhase === 2 ? 1 : 0.2)) }}>
+                            <span className="text-lg sm:text-xl font-bold text-slate-600 tracking-widest whitespace-nowrap">吸氣</span>
+                        </div>
+                        <div className="absolute -right-10 sm:-right-16 top-0 bottom-0 flex items-center justify-center transition-opacity duration-1000 ease-in-out" style={{ opacity: startupPhase < 1 ? 0 : (startupPhase >= 3 ? (phase === 1 ? 1 : 0.2) : 0.2) }}>
+                            <span className="text-lg sm:text-xl font-bold text-slate-600 tracking-widest whitespace-nowrap" style={{ writingMode: 'vertical-rl' }}>屏住呼吸</span>
+                        </div>
+                        <div className="absolute -bottom-8 sm:-bottom-10 left-0 right-0 text-center transition-opacity duration-1000 ease-in-out" style={{ opacity: startupPhase < 1 ? 0 : (startupPhase >= 3 ? (phase === 2 ? 1 : 0.2) : 0.2) }}>
+                            <span className="text-lg sm:text-xl font-bold text-slate-600 tracking-widest whitespace-nowrap">呼氣</span>
+                        </div>
+                        <div className="absolute -left-10 sm:-left-16 top-0 bottom-0 flex items-center justify-center transition-opacity duration-1000 ease-in-out" style={{ opacity: startupPhase < 1 ? 0 : (startupPhase >= 3 ? (phase === 3 ? 1 : 0.2) : 0.2) }}>
+                            <span className="text-lg sm:text-xl font-bold text-slate-600 tracking-widest whitespace-nowrap" style={{ writingMode: 'vertical-rl' }}>屏住呼吸</span>
+                        </div>
+
+                        {/* Internal Random Particles */}
+                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0">
+                            {particles.map(p => {
+                                let currentDist = 0;
+                                const minScale = 0.35; // Keep particles visible and loose during exhale
+                                if (phase === 0) currentDist = p.distance * (minScale + (1 - minScale) * progress);
+                                else if (phase === 1) currentDist = p.distance;
+                                else if (phase === 2) currentDist = p.distance * (minScale + (1 - minScale) * (1 - progress));
+                                else if (phase === 3) currentDist = p.distance * minScale;
+
+                                const floatX = Math.sin(continuousTime * p.speed + p.id) * 4;
+                                const floatY = Math.cos(continuousTime * p.speed + p.id) * 4;
+
+                                const currentAngle = p.angle + continuousTime * 0.15 * (p.id % 2 === 0 ? 1 : -1);
+
+                                const x = Math.cos(currentAngle) * currentDist + floatX;
+                                const y = Math.sin(currentAngle) * currentDist + floatY;
+
+                                return (
+                                    <div 
+                                        key={p.id}
+                                        className="absolute rounded-full bg-blue-400"
+                                        style={{
+                                            width: p.size,
+                                            height: p.size,
+                                            opacity: p.opacity,
+                                            left: `calc(50% + ${x}%)`,
+                                            top: `calc(50% + ${y}%)`,
+                                            transform: 'translate(-50%, -50%)',
+                                            transition: isActive ? 'none' : 'all 0.5s ease'
+                                        }}
+                                    />
+                                )
+                            })}
+                        </div>
+
+                        {/* SVG Track and Particle */}
+                        <svg className="absolute inset-0 w-full h-full z-10" viewBox="0 0 280 280">
+                            {/* Base Track - More obvious */}
+                            <rect x="12" y="12" width="256" height="256" rx="24" fill="none" stroke="#E2E8F0" strokeWidth="4" pathLength="100" />
+                                  
+                            {/* Moving Particle - More obvious glow */}
+                            <rect x="12" y="12" width="256" height="256" rx="24" fill="none" stroke="#3B82F6" strokeWidth="12" strokeLinecap="round"
+                                  pathLength="100" 
+                                  strokeDasharray="0.1 100" 
+                                  strokeDashoffset={-(phase * 25 + progress * 25)} 
+                                  className={startupPhase < 3 ? "animate-pulse" : ""}
+                                  style={{ filter: 'drop-shadow(0 0 16px rgba(59,130,246,0.9)) drop-shadow(0 0 8px rgba(59,130,246,0.6))' }} />
+                        </svg>
+                    </div>
+                    <div className="text-center animate-[fadeIn_2s_ease-in-out] guide-sentence-container">
+                        <p className={`text-slate-500 text-2xl sm:text-2xl tracking-wide font-medium transition-opacity duration-1000 ${startupPhase === 0 ? 'animate-pulse' : 'opacity-100'}`}>請跟隨光點，慢慢呼吸...</p>
+                    </div>
+                </div>
+            );
+        }
+
+        function BreathingExercise({ onBack, show }) {
+            const [exerciseType, setExerciseType] = useState(null); // null | 'sphere44' | 'sphere478' | 'square' | 'body'
+            const [showSphereOptions, setShowSphereOptions] = useState(false);
+            const [phase, setPhase] = useState('prepare'); // 'prepare' | 'inhale' | 'hold-in' | 'exhale' | 'hold-out'
+            const [bubbles, setBubbles] = useState([]);
+            const [seconds, setSeconds] = useState(0);
+            const [guideText, setGuideText] = useState('準備開始...');
+            const startTimeRef = useRef(null);
+            const [restartKey, setRestartKey] = useState(0);
+
+            // Bubble effect
+            useEffect(() => {
+                if (phase === 'exhale') {
+                    const newBubbles = Array.from({ length: 8 }, (_, i) => ({
+                        id: Date.now() + i,
+                        angle: Math.random() * 360,
+                        distance: 100 + Math.random() * 100,
+                        size: 10 + Math.random() * 20,
+                        delay: Math.random() * 0.5
+                    }));
+                    setBubbles(newBubbles);
+                    const timer = setTimeout(() => setBubbles([]), 3500);
+                    return () => clearTimeout(timer);
+                }
+            }, [phase]);
+
+            // Timer logic
+            useEffect(() => {
+                let interval;
+                if (exerciseType && exerciseType.startsWith('sphere')) {
+                    const is478 = exerciseType === 'sphere478';
+                    const INHALE_TIME = 4000;
+                    const HOLD_IN_TIME = is478 ? 7000 : 1000;
+                    const EXHALE_TIME = is478 ? 8000 : 4000;
+                    const HOLD_OUT_TIME = is478 ? 0 : 1000;
+                    const TOTAL_CYCLE = INHALE_TIME + HOLD_IN_TIME + EXHALE_TIME + HOLD_OUT_TIME;
+                    
+                    if (phase === 'prepare') {
+                        setGuideText('找一個舒適的姿勢坐好，\n準備開始深呼吸練習...');
+                        if (exerciseType === 'sphere-intro') return;
+                        const timer = setTimeout(() => {
+                            setPhase('inhale');
+                            startTimeRef.current = Date.now();
+                        }, 3000);
+                        return () => clearTimeout(timer);
+                    }
+
+                    const updateTimer = () => {
+                        if (!startTimeRef.current) startTimeRef.current = Date.now();
+                        const elapsed = Date.now() - startTimeRef.current;
+                        const cycleTime = elapsed % TOTAL_CYCLE;
+
+                        let newPhase = phase;
+                        let newSeconds = seconds;
+
+                        if (cycleTime < INHALE_TIME) {
+                            newPhase = 'inhale';
+                            newSeconds = 4 - Math.floor(cycleTime / 1000);
+                        } else if (cycleTime < INHALE_TIME + HOLD_IN_TIME) {
+                            newPhase = 'hold-in';
+                            if (is478) {
+                                const holdProgress = cycleTime - INHALE_TIME;
+                                newSeconds = 7 - Math.floor(holdProgress / 1000);
+                            } else {
+                                newSeconds = 4;
+                            }
+                        } else if (cycleTime < INHALE_TIME + HOLD_IN_TIME + EXHALE_TIME) {
+                            newPhase = 'exhale';
+                            const exhaleProgress = cycleTime - (INHALE_TIME + HOLD_IN_TIME);
+                            const totalExhaleSecs = is478 ? 8 : 4;
+                            newSeconds = totalExhaleSecs - Math.floor(exhaleProgress / 1000);
+                        } else {
+                            newPhase = 'hold-out';
+                            newSeconds = 1;
+                        }
+
+                        if (newPhase !== phase) {
+                            setPhase(newPhase);
+                            if (newPhase === 'inhale') {
+                                if (navigator.vibrate) navigator.vibrate(50);
+                            } else if (newPhase === 'exhale') {
+                                if (navigator.vibrate) navigator.vibrate([40, 60, 40]);
+                            }
+                        }
+                        if (newSeconds !== seconds) {
+                            setSeconds(newSeconds);
+                        }
+                    };
+
+                    interval = setInterval(updateTimer, 50);
+                    return () => clearInterval(interval);
+                }
+                return () => clearInterval(interval);
+            }, [exerciseType, phase, seconds, restartKey]);
+
+            const isExpanded = phase === 'inhale' || phase === 'hold-in';
+            const is478 = exerciseType === 'sphere478';
+
+            return (
+                <div className={`fixed inset-0 w-full h-full bg-[#FDFBF7] flex flex-col items-center select-none overflow-hidden transition-opacity duration-700 ease-in-out ${show ? 'opacity-100' : 'opacity-0'}`}>
+                    {/* Top Bar (Header + Options) */}
+                    <div className="w-full p-3 sm:p-6 flex items-center justify-center z-30 relative min-h-[64px] sm:min-h-[80px] mobile-landscape-topbar">
+                        {/* Back Button */}
+                        <div className="absolute left-4 sm:left-6 mobile-landscape-home">
+                            <button 
+                                onClick={onBack}
+                                className="w-10 h-10 flex items-center justify-center bg-white rounded-full shadow-md border border-slate-100 hover:scale-105 active:scale-95 transition-all duration-300"
+                            >
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5 text-slate-600">
+                                    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+                                    <polyline points="9 22 9 12 15 12 15 22" />
+                                </svg>
+                            </button>
+                        </div>
+
+                        {/* Restart Button */}
+                        {exerciseType && (
+                            <div className="absolute right-4 sm:right-6 mobile-landscape-restart">
+                                <button 
+                                    onClick={() => {
+                                        setPhase('prepare');
+                                        setRestartKey(prev => prev + 1);
+                                    }}
+                                    className="w-10 h-10 flex items-center justify-center bg-white rounded-full shadow-md border border-slate-100 hover:scale-105 active:scale-95 transition-all duration-300"
+                                >
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5 text-slate-600">
+                                        <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+                                        <path d="M3 3v5h5" />
+                                    </svg>
+                                </button>
+                            </div>
+                        )}
+
+                        {/* Option Buttons */}
+                        <div className="flex justify-center gap-4 sm:gap-6 z-20 mobile-landscape-options">
+                            <div className="relative flex flex-col items-center">
+                                <button 
+                                    onClick={() => { 
+                                        setShowSphereOptions(true); 
+                                        setExerciseType('sphere-intro');
+                                        setPhase('prepare');
+                                    }}
+                                    className={`w-12 h-12 sm:w-14 sm:h-14 rounded-2xl flex items-center justify-center transition-all duration-300 shadow-sm border-2 mobile-landscape-btn ${exerciseType && exerciseType.startsWith('sphere') ? 'bg-green-100 border-green-400 scale-110' : 'bg-white border-slate-100 hover:bg-slate-50'}`}
+                                >
+                                    <div className={`w-5 h-5 sm:w-6 sm:h-6 rounded-full ${is478 ? 'bg-purple-400' : 'bg-green-400'}`} />
+                                </button>
+                                
+                                {/* Sub-menu for Sphere Options */}
+                                {showSphereOptions && (
+                                    <>
+                                        <div 
+                                            className="fixed inset-0 z-10" 
+                                            onClick={() => setShowSphereOptions(false)}
+                                        />
+                                        <div className="absolute top-[60px] sm:top-[70px] left-1/2 -translate-x-1/2 z-20 mobile-landscape-submenu">
+                                            <div className="flex gap-2 w-max animate-[fadeInUp_0.3s_ease-out]">
+                                                <button 
+                                                    onClick={() => { setExerciseType('sphere44'); setShowSphereOptions(false); setPhase('prepare'); }}
+                                                    className={`px-4 py-2 rounded-xl text-sm sm:text-base font-bold shadow-md transition-colors ${!is478 && exerciseType === 'sphere44' ? 'bg-green-500 text-white' : 'bg-white text-green-600 border border-green-200 hover:bg-green-50'}`}
+                                                >
+                                                    4-4 呼吸
+                                                </button>
+                                                <button 
+                                                    onClick={() => { setExerciseType('sphere478'); setShowSphereOptions(false); setPhase('prepare'); }}
+                                                    className={`px-4 py-2 rounded-xl text-sm sm:text-base font-bold shadow-md transition-colors ${is478 ? 'bg-purple-500 text-white' : 'bg-white text-purple-600 border border-purple-200 hover:bg-purple-50'}`}
+                                                >
+                                                    4-7-8 呼吸
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </>
+                                )}
+                            </div>
+                            <button 
+                                onClick={() => { setExerciseType('square'); setShowSphereOptions(false); }}
+                                className={`w-12 h-12 sm:w-14 sm:h-14 rounded-2xl flex items-center justify-center transition-all duration-300 shadow-sm border-2 mobile-landscape-btn ${exerciseType === 'square' ? 'bg-blue-100 border-blue-400 scale-110' : 'bg-white border-slate-100 hover:bg-slate-50'}`}
+                            >
+                                <div className="w-5 h-5 sm:w-6 sm:h-6 bg-blue-400 rounded-md sm:rounded-lg" />
+                            </button>
+                            <button 
+                                onClick={() => { setExerciseType('body'); setShowSphereOptions(false); }}
+                                className={`w-12 h-12 sm:w-14 sm:h-14 rounded-2xl flex items-center justify-center transition-all duration-300 shadow-sm border-2 mobile-landscape-btn ${exerciseType === 'body' ? 'bg-orange-100 border-orange-400 scale-110' : 'bg-white border-slate-100 hover:bg-slate-50'}`}
+                            >
+                                <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5 sm:w-6 sm:h-6 text-orange-400">
+                                    <path d="M12 2a2 2 0 1 1 0 4 2 2 0 0 1 0-4zm-1.5 5h3a2 2 0 0 1 2 2v5.5h-1.5V22h-4v-7.5h-1.5V9a2 2 0 0 1 2-2z" />
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Exercise Content */}
+                    <div className={`flex-1 w-full flex flex-col items-center justify-center relative ${exerciseType === 'body' ? '' : 'mobile-landscape-scale'}`}>
+                        {!exerciseType && (
+                            <div className="text-center animate-[fadeInUp_0.5s_ease-out] px-2 w-full overflow-hidden">
+                                <h2 className="text-xl sm:text-3xl md:text-4xl font-bold text-slate-600 mb-4 whitespace-nowrap tracking-tight">請在上方選擇你想要的呼吸練習</h2>
+                            </div>
+                        )}
+                        {exerciseType && exerciseType.startsWith('sphere') && (
+                            <div className="relative flex flex-col items-center justify-center gap-8 sm:gap-12 mobile-landscape-compact">
+                                {/* Core Sphere */}
+                                <div className={`relative w-64 h-64 flex items-center justify-center transition-opacity duration-500 ${exerciseType === 'sphere-intro' ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
+                                    <div 
+                                        className="w-48 h-48 rounded-full relative z-10 flex items-center justify-center"
+                                        style={{
+                                            backgroundColor: isExpanded ? (is478 ? '#C084FC' : '#86EFAC') : (is478 ? '#E9D5FF' : '#A7F3D0'),
+                                            transform: isExpanded ? 'scale(1.5)' : 'scale(0.75)',
+                                            boxShadow: isExpanded ? `0 0 60px 20px ${is478 ? 'rgba(192, 132, 252, 0.6)' : 'rgba(134, 239, 172, 0.6)'}` : '0 0 0 0 rgba(0,0,0,0)',
+                                            opacity: phase === 'prepare' ? 0.8 : 1,
+                                            transition: `all ${phase === 'exhale' ? (is478 ? 8000 : 4000) : (phase === 'inhale' ? 4000 : 1000)}ms cubic-bezier(0.4,0,0.2,1)`
+                                        }}
+                                    >
+                                        {phase !== 'prepare' && (
+                                            (!is478 && (phase === 'hold-in' || phase === 'hold-out')) ? null : (
+                                                <span 
+                                                    key={seconds} 
+                                                    className="text-5xl font-bold text-white drop-shadow-md font-mono animate-[fadeInUp_0.5s_ease-out]"
+                                                >
+                                                    {seconds}
+                                                </span>
+                                            )
+                                        )}
+                                    </div>
+
+                                    {/* Bubbles */}
+                                    {phase === 'exhale' && bubbles.map(bubble => (
+                                        <div
+                                            key={bubble.id}
+                                            className="absolute rounded-full bg-[#A7F3D0]/60 pointer-events-none"
+                                            style={{
+                                                width: bubble.size,
+                                                height: bubble.size,
+                                                left: '50%',
+                                                top: '50%',
+                                                transform: `translate(-50%, -50%) rotate(${bubble.angle}deg) translateX(${bubble.distance}px)`,
+                                                opacity: 0,
+                                                transition: `transform 3s ease-out ${bubble.delay}s, opacity 3s ease-out ${bubble.delay}s`,
+                                                animation: `bubbleFloat 3s ease-out ${bubble.delay}s forwards`
+                                            }}
+                                        />
+                                    ))}
+                                </div>
+
+                                {/* Instruction Text */}
+                                <div className="text-center h-20 sm:h-32 flex flex-col items-center justify-center gap-3 w-full relative">
+                                    <p className={`absolute text-2xl text-slate-500 font-medium whitespace-pre-line leading-relaxed transition-opacity duration-500 ${phase === 'prepare' ? 'opacity-100 animate-pulse' : 'opacity-0 pointer-events-none'}`}>
+                                        {guideText}
+                                    </p>
+
+                                    <div className={`relative flex items-center justify-center w-full transition-opacity duration-500 ${phase === 'prepare' ? 'opacity-0' : 'opacity-100'}`}>
+                                        {/* Left Wind Logo (Inhale) */}
+                                        <div className="absolute right-[calc(50%+90px)] w-24 h-24 flex items-center justify-center pointer-events-none">
+                                            <img 
+                                                src="https://github.com/epcashadhd/emotionmeter/blob/main/breath1.png?raw=true" 
+                                                alt="Wind Inhale"
+                                                className={`w-full h-full object-contain transform ${
+                                                    phase === 'inhale' || (!is478 && phase === 'hold-in')
+                                                        ? 'opacity-100 scale-100 translate-x-24' 
+                                                        : 'opacity-0 scale-50 -translate-x-12'
+                                                }`}
+                                                style={{ 
+                                                    transitionProperty: 'opacity, transform',
+                                                    transitionDuration: phase === 'inhale' || (!is478 && phase === 'hold-in') ? '1000ms, 4000ms' : '1000ms, 0ms',
+                                                    transitionDelay: phase === 'inhale' || (!is478 && phase === 'hold-in') ? '0ms, 0ms' : '0ms, 1000ms',
+                                                    transitionTimingFunction: 'ease-out'
+                                                }}
+                                            />
+                                        </div>
+
+                                        {/* Center Text */}
+                                        <div className="relative flex flex-col items-center justify-center z-10 min-w-[160px] h-[100px]">
+                                            <div className={`absolute flex flex-col items-center transition-all duration-1000 ease-in-out ${phase === 'inhale' || (!is478 && phase === 'hold-in') ? 'opacity-100 transform translate-y-0' : 'opacity-0 transform -translate-y-2'}`}>
+                                                <h2 className="text-6xl font-bold text-slate-700">吸氣</h2>
+                                                <p className="text-2xl text-slate-400 font-medium tracking-widest">INHALE</p>
+                                            </div>
+                                            <div className={`absolute flex flex-col items-center transition-all duration-1000 ease-in-out ${phase === 'exhale' || (!is478 && phase === 'hold-out') ? 'opacity-100 transform translate-y-0' : 'opacity-0 transform -translate-y-2'}`}>
+                                                <h2 className="text-6xl font-bold text-slate-700">呼氣</h2>
+                                                <p className="text-2xl text-slate-400 font-medium tracking-widest">EXHALE</p>
+                                            </div>
+                                            <div className={`absolute flex flex-col items-center transition-all duration-1000 ease-in-out ${is478 && (phase === 'hold-in' || phase === 'hold-out') ? 'opacity-100 transform translate-y-0' : 'opacity-0 transform -translate-y-2'}`}>
+                                                <h2 className="text-6xl font-bold text-slate-700 whitespace-nowrap">屏住呼吸</h2>
+                                                <p className="text-2xl text-slate-400 font-medium tracking-widest">HOLD</p>
+                                            </div>
+                                        </div>
+
+                                        {/* Right Wind Logo (Exhale) */}
+                                        <div className="absolute left-[calc(50%+90px)] w-24 h-24 flex items-center justify-center pointer-events-none">
+                                            <img 
+                                                src="https://github.com/epcashadhd/emotionmeter/blob/main/breath1.png?raw=true" 
+                                                alt="Wind Exhale"
+                                                className={`w-full h-full object-contain transform ${
+                                                    phase === 'exhale' || (!is478 && phase === 'hold-out')
+                                                        ? 'opacity-100 scale-100 -translate-x-4' 
+                                                        : 'opacity-0 scale-50 -translate-x-32'
+                                                }`}
+                                                style={{ 
+                                                    transitionProperty: 'opacity, transform',
+                                                    transitionDuration: phase === 'exhale' || (!is478 && phase === 'hold-out') ? `1000ms, ${is478 ? 8000 : 4000}ms` : '1000ms, 0ms',
+                                                    transitionDelay: phase === 'exhale' || (!is478 && phase === 'hold-out') ? '0ms, 0ms' : '0ms, 1000ms',
+                                                    transitionTimingFunction: 'ease-out'
+                                                }}
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                        {exerciseType === 'square' && (
+                            <BoxBreathingTool key={restartKey} />
+                        )}
+                        {exerciseType === 'body' && (
+                            <BodyScanTool key={restartKey} />
+                        )}
+                    </div>
+
+                    <style>{`
+                        .body-scan-container {
+                            display: flex;
+                            flex-direction: column;
+                            align-items: center;
+                            width: 100%;
+                            max-width: 600px;
+                            margin: 0 auto;
+                            height: 100%;
+                            justify-content: flex-start;
+                            gap: 1rem;
+                            padding-top: 1rem;
+                        }
+                        .body-image-wrapper {
+                            position: relative;
+                            width: 100%;
+                            height: auto;
+                            max-height: 75vh;
+                            aspect-ratio: 706/1000;
+                            background: transparent;
+                            border-radius: 1rem;
+                            overflow: visible;
+                            display: flex;
+                            justify-content: center;
+                            align-items: center;
+                        }
+                        /* Mobile Portrait (iPhone 13 mini etc) */
+                        @media (max-width: 480px) and (orientation: portrait) {
+                            .body-image-wrapper {
+                                max-height: 70vh;
+                            }
+                            .body-scan-container {
+                                gap: 0.5rem;
+                                padding-top: 0.5rem;
+                            }
+                        }
+                        /* Mobile Landscape */
+                        @media (orientation: landscape) and (max-height: 500px) {
+                            .body-scan-container {
+                                flex-direction: row;
+                                justify-content: center;
+                                align-items: center;
+                                gap: 2rem;
+                                padding: 0 1rem;
+                                max-width: 90%;
+                            }
+                            .body-image-wrapper {
+                                max-height: 85vh;
+                                width: auto;
+                                flex: 0 0 auto;
+                            }
+                            .guidance-area {
+                                flex: 1;
+                                text-align: left;
+                            }
+                        }
+                        /* Tablet Portrait */
+                        @media (min-width: 768px) and (max-width: 1024px) and (orientation: portrait) {
+                            .body-image-wrapper {
+                                max-height: 70vh;
+                            }
+                        }
+                        .body-image {
+                            width: auto;
+                            height: auto;
+                            max-width: 100%;
+                            max-height: 100%;
+                            object-fit: contain;
+                        }
+                        .guidance-area {
+                            width: 100%;
+                            padding: 0.5rem;
+                            background: transparent;
+                            text-align: center;
+                        }
+                        @keyframes gentleFadeIn {
+                            from { opacity: 0; transform: translateY(15px); }
+                            to { opacity: 1; transform: translateY(0); }
+                        }
+                    `}</style>
+                </div>
+            );
+        }
+
+        function BodyScanTool() {
+            const [selectedPart, setSelectedPart] = useState(null);
+
+            const BODY_PARTS = [
+                { id: 'head', name: '頭部', top: '8.4%', left: '46.1%' },
+                { id: 'shoulders', name: '肩膀', top: '30.6%', left: '32.0%' },
+                { id: 'chest', name: '胸口', top: '39.0%', left: '57.9%' },
+                { id: 'stomach', name: '胃部', top: '56.4%', left: '50.4%' },
+                { id: 'hands', name: '手部', top: '55.0%', left: '18.9%' },
+                { id: 'feet', name: '腳部', top: '89.6%', left: '62.9%' },
+            ];
+
+            return (
+                <div className="body-scan-container animate-[gentleFadeIn_2.5s_ease-in-out]">
+                    <div className="body-image-wrapper">
+                        <div className="relative h-full aspect-[706/1000]">
+                            <img 
+                                src="https://github.com/epcashadhd/emotionmeter/blob/main/body.png?raw=true" 
+                                alt="Body Scan" 
+                                className="body-image"
+                                referrerPolicy="no-referrer"
+                            />
+                            
+                            {BODY_PARTS.map(part => (
+                                <div 
+                                    key={part.id}
+                                    onClick={() => setSelectedPart(part)}
+                                    className="absolute cursor-pointer flex items-center justify-center"
+                                    style={{ 
+                                        top: part.top, 
+                                        left: part.left,
+                                        width: '60px',
+                                        height: '60px',
+                                        transform: 'translate(-50%, -50%)',
+                                        zIndex: 10
+                                    }}
+                                >
+                                    {/* Glow effect when selected */}
+                                    {selectedPart?.id === part.id && (
+                                        <div 
+                                            className="absolute w-[100px] h-[100px] rounded-full animate-pulse pointer-events-none"
+                                            style={{ 
+                                                background: 'radial-gradient(circle, rgba(253, 224, 71, 0.8) 0%, transparent 70%)',
+                                            }}
+                                        />
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                    
+                    <div className="guidance-area">
+                        <p className="text-slate-700 text-xl sm:text-2xl font-bold leading-relaxed px-2">
+                            {selectedPart 
+                                ? `現在，試著感受一下你的 ${selectedPart.name}...` 
+                                : "請點擊圖片中你感到不舒服的身體部位"}
+                        </p>
+                    </div>
+                </div>
+            );
+        }
+
+        function EmotionMeterTool({ onBack, show }) {
+            const [level, setLevel] = useState(1);
+
+            const currentState = EMOTION_LEVELS.find(e => e.id === level) || EMOTION_LEVELS[0];
+
+            const getGradient = (val) => {
+                if (val <= 1) return 'from-green-400 to-green-200';
+                if (val <= 2) return 'from-teal-400 to-teal-200';
+                if (val <= 3) return 'from-blue-400 to-blue-200';
+                if (val <= 4) return 'from-yellow-400 to-yellow-200';
+                if (val <= 5) return 'from-indigo-500 to-indigo-300';
+                if (val <= 6) return 'from-orange-600 to-orange-400';
+                return 'from-red-700 to-red-500';
+            };
+
+            const currentGradient = getGradient(level);
+
+            const getSolidColor = (val) => {
+                if (val <= 1) return '#4ADE80';
+                if (val <= 2) return '#2DD4BF';
+                if (val <= 3) return '#60A5FA';
+                if (val <= 4) return '#EAB308';
+                if (val <= 5) return '#6366F1';
+                if (val <= 6) return '#EA580C';
+                return '#B91C1C';
+            };
+            const solidColor = getSolidColor(level);
+
+            const heightPercentage = (level / 7) * 100;
+
+            return (
+                <div className={`fixed inset-0 w-full h-full flex flex-col items-center justify-center bg-gradient-to-br ${currentGradient} p-4 font-main text-slate-800 overflow-hidden transition-opacity duration-700 ease-in-out select-none ${show ? 'opacity-100' : 'opacity-0'}`}>
+                    
+                    <style>{`
+                        input[type=range]::-webkit-slider-thumb {
+                            border: 5px solid ${solidColor};
+                        }
+                        input[type=range]::-moz-range-thumb {
+                            border: 5px solid ${solidColor};
+                        }
+                    `}</style>
+
+                    <div className="main-card-scale z-10 w-full max-w-[380px] bg-white/90 backdrop-blur-xl rounded-3xl shadow-2xl p-6 sm:p-8 flex flex-col items-center gap-6 border border-white/50 transition-transform duration-300 ease-out">
+                        <h1 className="text-6xl font-bold text-slate-800 tracking-tighter">情緒溫度計</h1>
+                        
+                        <div className="flex flex-row w-full justify-between items-center gap-4 sm:gap-6">
+                            {/* Thermometer */}
+                            <div className="relative h-80 w-24 bg-slate-100 rounded-full border-4 border-slate-300 flex flex-col justify-end items-center shadow-inner overflow-hidden shrink-0">
+                                <div className="absolute inset-0 z-20 flex flex-col justify-between py-4 pointer-events-none">
+                                    {[...Array(7)].map((_, i) => (
+                                        <div key={i} className={`w-full h-0.5 ${i === 0 || i === 6 ? 'bg-slate-400/50 w-1/2 mx-auto' : 'bg-slate-300/50 w-1/3 mx-auto'}`} />
+                                    ))}
+                                </div>
+
+                                {/* Liquid */}
+                                <div 
+                                    className="w-full relative z-10"
+                                    style={{ 
+                                        height: `${heightPercentage}%`, 
+                                        backgroundColor: solidColor,
+                                        transition: 'height 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275), background-color 0.5s ease'
+                                    }}
+                                >
+                                    <div className="absolute top-0 left-0 w-full h-4 bg-white/30 rounded-t-full" />
+                                </div>
+
+                                {/* Bulb */}
+                                <div 
+                                    className="absolute -bottom-6 w-32 h-32 rounded-full border-4 border-slate-300 z-30 flex items-center justify-center shadow-lg transition-colors duration-500"
+                                    style={{ backgroundColor: solidColor }}
+                                >
+                                    <span className="text-white font-bold text-7xl drop-shadow-md">{level}</span>
+                                </div>
+                            </div>
+
+                            {/* Controls */}
+                            <div className="flex-1 flex flex-col gap-6 items-center text-center min-w-0">
+                                <div className="space-y-2 min-h-[180px] flex flex-col justify-center w-full">
+                                    <div className="flex flex-col items-center">
+                                        {/* Image Container with Preloading/Crossfade */}
+                                        <div className="relative w-32 h-32 mb-4 drop-shadow-md">
+                                            {EMOTION_LEVELS.map((emotion) => (
+                                                <img 
+                                                    key={emotion.id}
+                                                    src={`https://github.com/epcashadhd/emotionmeter/blob/main/basic${emotion.id}.png?raw=true`} 
+                                                    alt={emotion.label}
+                                                    className={`absolute inset-0 w-full h-full object-contain transition-opacity duration-500 ${level === emotion.id ? 'opacity-100' : 'opacity-0'}`}
+                                                    referrerPolicy="no-referrer"
+                                                />
+                                            ))}
+                                        </div>
+                                        
+                                        {/* Fixed height container for text */}
+                                        <div className="flex flex-col items-center h-[140px] justify-start">
+                                            <h2 className="text-6xl font-bold transition-colors duration-300 whitespace-nowrap" style={{ color: solidColor }}>{currentState.label}</h2>
+                                            <p className="text-slate-600 text-2xl font-bold mt-2 leading-snug whitespace-pre-wrap">{currentState.description}</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="w-full space-y-4 pt-2">
+                                    <label htmlFor="emotion-slider" className="sr-only">Emotion Level</label>
+                                    <div className="relative w-full h-14 flex items-center justify-center">
+                                        <input
+                                            id="emotion-slider"
+                                            type="range"
+                                            min="1"
+                                            max="7"
+                                            step="1"
+                                            value={level}
+                                            onChange={(e) => setLevel(Number(e.target.value))}
+                                            className="w-full appearance-none bg-transparent focus:outline-none z-20"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="w-full pt-4 sm:pt-6 border-t border-slate-200 flex items-center gap-3 sm:gap-4">
+                            {/* Home Button (Updated Design) */}
+                            <button 
+                                onClick={onBack}
+                                className="w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center bg-white rounded-full shadow-lg border border-slate-100 hover:scale-105 active:scale-95 transition-all duration-300 shrink-0"
+                                aria-label="Back to Menu"
+                            >
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5 sm:w-6 sm:h-6 text-slate-600">
+                                    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                                    <polyline points="9 22 9 12 15 12 15 22"></polyline>
+                                </svg>
+                            </button>
+
+                            <p className="flex-1 text-lg sm:text-xl md:text-2xl text-slate-600 text-center font-bold leading-relaxed whitespace-nowrap overflow-hidden text-ellipsis">
+                                {level >= 6 ? "深呼吸，慢慢數到十。" : 
+                                level >= 4 ? "找人說說你的煩惱。" : 
+                                level >= 3 ? "聽聽音樂，轉換心情。" :
+                                "保持笑容，傳遞快樂！"}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        const EMOTION_DEFINITIONS = {
+            p1: { title: "開心", desc: "臉上有笑容，\n覺得心裡很舒服。" },
+            p2: { title: "平靜", desc: "呼吸很順、很慢，\n覺得環境很安全。" },
+            p3: { title: "興奮", desc: "身體很有動力，\n很想跳一跳或大聲說話。" },
+            p4: { title: "輕鬆", desc: "覺得不累，\n沒有壓力。" },
+            p5: { title: "期待", desc: "想著將來要做的事，\n覺得很棒。" },
+            p6: { title: "自豪", desc: "我把事情做好了，\n覺得自己很棒。" },
+            p7: { title: "好感", desc: "覺得對方很友善，\n喜歡跟這個人在一起，\n或者很喜歡這件事。" },
+            p8: { title: "自信", desc: "覺得「我可以做到」，\n身體感覺很有力量。" },
+            p9: { title: "驚喜", desc: "發生了沒想過的好事，\n覺得很新奇，\n有一種「哇！」的感覺。" },
+            p10: { title: "滿足", desc: "覺得所擁有的事物或感覺很足夠，\n不需要額外的。" },
+            p11: { title: "感恩", desc: "發現有人對我好，\n或是事情很順利，\n心裡很溫馨。" },
+            p12: { title: "好奇", desc: "看到新事物，\n想要去嘗試、觀察或觸摸。" },
+            p13: { title: "舒服", desc: "身體感覺很自在，\n覺得放鬆。" },
+            n1: { title: "傷心", desc: "心裡重重的，\n可能想流眼淚。" },
+            n2: { title: "厭惡", desc: "聞到、摸到或看到不喜歡的東西，\n想趕快走開。" },
+            n3: { title: "擔心", desc: "一直想著，\n「如果不順利怎麼辦」。" },
+            n4: { title: "害怕", desc: "遇到危險或不喜歡的事，\n想要躲起來或逃跑。" },
+            n5: { title: "尷尬", desc: "覺得大家都在看我，\n或者覺得不自在，想躲起來。" },
+            n6: { title: "生氣", desc: "感到不滿或被冒犯，\n拳頭握緊，可能會想大叫。" },
+            n7: { title: "疲倦", desc: "身體沒力氣，\n很想睡覺或休息。" },
+            n8: { title: "失望", desc: "想要的結果沒有出現，\n覺得心裡空空的。" },
+            n9: { title: "緊張", desc: "手心出汗，心跳變快，\n不確定會發生什麼。" },
+            n10: { title: "委屈", desc: "被誤會或被不公平對待，\n心裡悶悶、酸酸的。" },
+            n11: { title: "沉悶", desc: "覺得沒有興趣、很無聊，\n甚至覺得時間過得特別慢。" },
+            n12: { title: "孤單", desc: "沒有人陪伴理解及傾訴，\n覺得只有自己一個。" },
+            n13: { title: "內疚", desc: "發現自己做錯事或傷害了別人，\n心裡很抱歉。" },
+        };
+
+        function EmotionWritingView({ emotion, onBack, onHome, show }) {
+            const [mode, setMode] = useState(null); // 'draw', 'type', 'erase', null
+            const [text, setText] = useState('');
+            const [meterLevel, setMeterLevel] = useState(1);
+            const canvasRef = useRef(null);
+            const [isDrawing, setIsDrawing] = useState(false);
+            const [isDraggingMeter, setIsDraggingMeter] = useState(false);
+            const [eraserSize, setEraserSize] = useState(20); // 20: Medium, 40: Big
+            const [cursorPos, setCursorPos] = useState({ x: 0, y: 0 });
+            const [hasDrawn, setHasDrawn] = useState(false);
+            const trackRef = useRef(null);
             
-            <div className="space-y-2 min-h-[140px] sm:min-h-[180px] flex flex-col justify-center w-full">
-              <div className="flex flex-col items-center">
-                {/* Image Container with Preloading/Crossfade */}
-                <div className="emotion-image relative w-24 h-24 sm:w-32 sm:h-32 mb-2 sm:mb-4 drop-shadow-md">
-                  {EMOTION_LEVELS.map((emotion) => (
-                    <img 
-                      key={emotion.id}
-                      src={`https://github.com/epcashadhd/emotionmeter/blob/main/basic${emotion.id}.png?raw=true`} 
-                      alt={emotion.label}
-                      className={`absolute inset-0 w-full h-full object-contain transition-opacity duration-500 ${level === emotion.id ? 'opacity-100' : 'opacity-0'}`}
-                      referrerPolicy="no-referrer"
-                    />
-                  ))}
-                </div>
+            // Enlargement Logic
+            const [enlargedEmotion, setEnlargedEmotion] = useState(null);
+            const [isEnlargedVisible, setIsEnlargedVisible] = useState(false);
+            const [layoutMode, setLayoutMode] = useState('desktop');
+
+            useEffect(() => {
+                const checkLayout = () => {
+                    const width = window.innerWidth;
+                    const height = window.innerHeight;
+                    const isLandscape = width > height;
+
+                    if (isLandscape && height <= 500) {
+                        setLayoutMode('mobile-landscape');
+                    } else if (!isLandscape && width <= 600) {
+                        setLayoutMode('mobile-portrait');
+                    } else if (!isLandscape && width <= 1024) {
+                        setLayoutMode('tablet-portrait');
+                    } else {
+                        setLayoutMode('desktop');
+                    }
+                };
                 
-                {/* Fixed height container for text */}
-                <div className="flex flex-col items-center min-h-[100px] sm:min-h-[140px] justify-start">
-                  <h2 className="label-text text-4xl sm:text-6xl font-bold transition-colors duration-300 whitespace-nowrap" style={{ color: solidColor }}>{currentState.label}</h2>
-                  <p className="desc-text text-slate-600 text-xl sm:text-3xl font-bold mt-1 sm:mt-2 leading-snug whitespace-pre-wrap">{currentState.description}</p>
+                checkLayout();
+                window.addEventListener('resize', checkLayout);
+                return () => window.removeEventListener('resize', checkLayout);
+            }, []);
+
+            const handleEnlarge = (e, emotion) => {
+                e.stopPropagation();
+                setEnlargedEmotion(emotion);
+                setTimeout(() => setIsEnlargedVisible(true), 10);
+            };
+
+            const closeEnlarged = (e) => {
+                if (e) e.stopPropagation();
+                setIsEnlargedVisible(false);
+                setTimeout(() => setEnlargedEmotion(null), 700);
+            };
+
+            useEffect(() => {
+                if (!enlargedEmotion) return;
+                const handleKeyDown = (e) => {
+                    if (e.key === 'Escape') {
+                        closeEnlarged();
+                    }
+                };
+                window.addEventListener('keydown', handleKeyDown);
+                return () => window.removeEventListener('keydown', handleKeyDown);
+            }, [enlargedEmotion]);
+
+            const handleMeterPointerDown = (e) => {
+                setMode(null); // Deselect writing/drawing mode
+                setIsDraggingMeter(true);
+                e.target.setPointerCapture(e.pointerId);
+                updateMeterLevel(e);
+            };
+
+            const handleMeterPointerMove = (e) => {
+                if (isDraggingMeter) {
+                    updateMeterLevel(e);
+                }
+            };
+
+            const handleMeterPointerUp = (e) => {
+                setIsDraggingMeter(false);
+                e.target.releasePointerCapture(e.pointerId);
+            };
+
+            const updateMeterLevel = (e) => {
+                if (!trackRef.current) return;
+                const rect = trackRef.current.getBoundingClientRect();
+                const clientY = e.clientY;
+                const height = rect.bottom - clientY;
+                const percentage = Math.max(0, Math.min(1, height / rect.height));
+                const newLevel = Math.max(1, Math.min(7, Math.ceil(percentage * 7)));
+                setMeterLevel(newLevel);
+            };
+            
+            // Canvas Logic
+            useEffect(() => {
+                const canvas = canvasRef.current;
+                if (canvas) {
+                    const initCanvas = () => {
+                        // Set canvas size to match display size
+                        canvas.width = canvas.offsetWidth;
+                        canvas.height = canvas.offsetHeight;
+                        
+                        const ctx = canvas.getContext('2d');
+                        ctx.lineCap = 'round';
+                        ctx.lineJoin = 'round';
+                    };
+
+                    initCanvas();
+                    // Re-init after a short delay to ensure layout is stable (e.g. after transitions)
+                    setTimeout(initCanvas, 100);
+                }
+            }, []);
+
+            // Handle resize
+            useEffect(() => {
+                const handleResize = () => {
+                    const canvas = canvasRef.current;
+                    if (canvas) {
+                        // Save current content
+                        const tempCanvas = document.createElement('canvas');
+                        tempCanvas.width = canvas.width;
+                        tempCanvas.height = canvas.height;
+                        tempCanvas.getContext('2d').drawImage(canvas, 0, 0);
+                        
+                        // Resize
+                        canvas.width = canvas.offsetWidth;
+                        canvas.height = canvas.offsetHeight;
+                        
+                        // Restore content
+                        const ctx = canvas.getContext('2d');
+                        ctx.lineCap = 'round';
+                        ctx.lineJoin = 'round';
+                        ctx.drawImage(tempCanvas, 0, 0);
+                    }
+                };
+                window.addEventListener('resize', handleResize);
+                return () => window.removeEventListener('resize', handleResize);
+            }, []);
+
+            const startDrawing = (e) => {
+                if (mode !== 'draw' && mode !== 'erase') return;
+                const canvas = canvasRef.current;
+                const ctx = canvas.getContext('2d');
+                const rect = canvas.getBoundingClientRect();
+                const clientX = e.clientX || e.touches[0].clientX;
+                const clientY = e.clientY || e.touches[0].clientY;
+                const x = clientX - rect.left;
+                const y = clientY - rect.top;
+                
+                setCursorPos({ x, y });
+
+                ctx.beginPath();
+                ctx.moveTo(x, y);
+                
+                // Set style based on mode
+                if (mode === 'erase') {
+                    ctx.globalCompositeOperation = 'destination-out';
+                    ctx.lineWidth = eraserSize;
+                } else {
+                    ctx.globalCompositeOperation = 'source-over';
+                    ctx.lineWidth = 3;
+                    ctx.strokeStyle = '#334155';
+                }
+
+                setIsDrawing(true);
+            };
+
+            const draw = (e) => {
+                if (!isDrawing || (mode !== 'draw' && mode !== 'erase')) return;
+                // Only prevent default if we are drawing to avoid scrolling
+                if (e.cancelable) e.preventDefault(); 
+                
+                if (!hasDrawn) setHasDrawn(true);
+
+                const canvas = canvasRef.current;
+                const ctx = canvas.getContext('2d');
+                const rect = canvas.getBoundingClientRect();
+                const clientX = e.clientX || e.touches[0].clientX;
+                const clientY = e.clientY || e.touches[0].clientY;
+                const x = clientX - rect.left;
+                const y = clientY - rect.top;
+
+                setCursorPos({ x, y });
+
+                ctx.lineTo(x, y);
+                ctx.stroke();
+            };
+
+            const stopDrawing = () => {
+                setIsDrawing(false);
+            };
+
+            const clearAll = () => {
+                const canvas = canvasRef.current;
+                const ctx = canvas.getContext('2d');
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                setText('');
+                setHasDrawn(false);
+            };
+
+            const toggleMode = (newMode) => {
+                if (mode === newMode) {
+                    setMode(null);
+                } else {
+                    setMode(newMode);
+                }
+            };
+
+            const getSolidColor = (val) => {
+                if (val <= 1) return '#4ADE80';
+                if (val <= 2) return '#2DD4BF';
+                if (val <= 3) return '#60A5FA';
+                if (val <= 4) return '#EAB308';
+                if (val <= 5) return '#6366F1';
+                if (val <= 6) return '#EA580C';
+                return '#B91C1C';
+            };
+            const solidColor = getSolidColor(meterLevel);
+            const heightPercentage = (meterLevel / 7) * 100;
+
+            const getCursorStyle = () => {
+                if (mode === 'erase') {
+                    const size = eraserSize;
+                    const svg = `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" xmlns="http://www.w3.org/2000/svg"><circle cx="${size/2}" cy="${size/2}" r="${size/2-1}" fill="rgba(255, 255, 255, 0.5)" stroke="#334155" stroke-width="2"/></svg>`;
+                    const url = `data:image/svg+xml;base64,${btoa(svg)}`;
+                    return `url("${url}") ${size/2} ${size/2}, auto`;
+                }
+                if (mode === 'draw') return 'crosshair';
+                return 'default';
+            };
+
+            return (
+                <div 
+                    className={`fixed inset-0 w-full h-full bg-[#FDFBF7] flex flex-col z-50 transition-opacity duration-700 ease-in-out select-none ${show ? 'opacity-100' : 'opacity-0'}`}
+                    onClick={() => setMode(null)}
+                >
+                    {/* Header */}
+                    <div 
+                        className="w-full p-2 flex justify-between items-center bg-[#FDFBF7]/95 backdrop-blur-sm shadow-sm shrink-0"
+                        onClick={() => setMode(null)}
+                    >
+                        <button 
+                            onClick={(e) => { e.stopPropagation(); onBack(); }}
+                            className="w-10 h-10 flex items-center justify-center bg-white rounded-full shadow-md border border-slate-100 hover:scale-105 active:scale-95 transition-all duration-300"
+                        >
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5 text-slate-600">
+                                <path d="M19 12H5M12 19l-7-7 7-7" />
+                            </svg>
+                        </button>
+                        <h1 className="text-xl font-bold text-slate-700">記錄心情</h1>
+                        <button 
+                            onClick={(e) => { e.stopPropagation(); onHome(); }}
+                            className="w-10 h-10 flex items-center justify-center bg-white rounded-full shadow-md border border-slate-100 hover:scale-105 active:scale-95 transition-all duration-300"
+                        >
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5 text-slate-600">
+                                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                                <polyline points="9 22 9 12 15 12 15 22"></polyline>
+                            </svg>
+                        </button>
+                    </div>
+
+                    <div className="flex-1 flex flex-row p-4 gap-4 overflow-hidden">
+                        {/* Left Column: Emotion + Thermometer */}
+                        <div 
+                            className="w-1/3 max-w-[220px] flex flex-col gap-4 items-center overflow-y-auto"
+                            onClick={() => setMode(null)}
+                        >
+                            {/* Emotion Image */}
+                            <div 
+                                className="w-full aspect-square bg-white rounded-2xl shadow-sm border-2 border-slate-100 p-2 flex items-center justify-center shrink-0 cursor-pointer hover:scale-105 transition-transform duration-300 active:scale-95"
+                                onClick={(e) => handleEnlarge(e, emotion)}
+                            >
+                                <img 
+                                    src={`https://github.com/epcashadhd/emotionmeter/blob/main/${emotion.type}${emotion.index}.png?raw=true`}
+                                    alt="Selected Emotion"
+                                    className="w-full h-full object-contain"
+                                    referrerPolicy="no-referrer"
+                                />
+                            </div>
+
+                            {/* Mini Thermometer */}
+                            <div className="flex-1 w-full bg-white rounded-2xl shadow-sm border-2 border-slate-100 p-4 flex flex-col items-center justify-between min-h-[300px]">
+                                <div className="text-slate-500 font-bold mb-2">情緒指數</div>
+                                
+                                <div className="flex-1 w-full flex items-center justify-center py-4">
+                                    <div className="relative h-full w-12 bg-slate-100 rounded-full border-2 border-slate-300 flex flex-col justify-end items-center shadow-inner">
+                                        {/* Ticks */}
+                                        <div className="absolute inset-0 z-20 flex flex-col justify-between py-4 pointer-events-none">
+                                            {[...Array(7)].map((_, i) => (
+                                                <div key={i} className={`w-full h-0.5 ${i === 0 || i === 6 ? 'bg-slate-400/50 w-1/2 mx-auto' : 'bg-slate-300/50 w-1/3 mx-auto'}`} />
+                                            ))}
+                                        </div>
+
+                                        {/* Liquid */}
+                                        <div 
+                                            className="w-full relative z-10 rounded-b-full"
+                                            style={{ 
+                                                height: `${heightPercentage}%`, 
+                                                backgroundColor: solidColor,
+                                                transition: isDraggingMeter ? 'none' : 'height 0.3s ease, background-color 0.3s ease'
+                                            }}
+                                        >
+                                            <div className="absolute top-0 left-0 w-full h-2 bg-white/30 rounded-t-full" />
+                                        </div>
+
+                                        {/* Interaction Track */}
+                                        <div 
+                                            ref={trackRef}
+                                            className="absolute inset-0 z-40 cursor-pointer touch-none"
+                                            onPointerDown={handleMeterPointerDown}
+                                            onPointerMove={handleMeterPointerMove}
+                                            onPointerUp={handleMeterPointerUp}
+                                            onPointerLeave={handleMeterPointerUp}
+                                        />
+
+                                        {/* Draggable Circle (Thumb) */}
+                                        <div 
+                                            className="absolute w-16 h-16 rounded-full border-4 border-white shadow-lg z-50 flex items-center justify-center transition-colors duration-300 pointer-events-none"
+                                            style={{ 
+                                                bottom: `${heightPercentage}%`,
+                                                left: '50%',
+                                                transform: 'translate(-50%, 50%)',
+                                                backgroundColor: solidColor,
+                                                transition: isDraggingMeter ? 'none' : 'bottom 0.3s ease, background-color 0.3s ease'
+                                            }}
+                                        >
+                                            <span className="text-white font-bold text-2xl drop-shadow-md">{meterLevel}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Right Column: Writing Box */}
+                        <div 
+                            className="flex-1 bg-white rounded-3xl shadow-sm border-2 border-slate-100 flex flex-col relative overflow-hidden"
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            {/* Toolbar */}
+                            <div className="absolute top-2 right-2 sm:top-4 sm:right-4 flex gap-1 sm:gap-2 z-20">
+                                <button 
+                                    onClick={() => toggleMode('draw')}
+                                    className={`w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center shadow-md transition-all ${mode === 'draw' ? 'bg-orange-500 text-white scale-110' : 'bg-white text-slate-500 hover:bg-slate-50'}`}
+                                    title="Draw"
+                                >
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5 sm:w-6 sm:h-6">
+                                        <path d="M12 20h9" /><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+                                    </svg>
+                                </button>
+                                <button 
+                                    onClick={() => toggleMode('type')}
+                                    className={`w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center shadow-md transition-all ${mode === 'type' ? 'bg-orange-500 text-white scale-110' : 'bg-white text-slate-500 hover:bg-slate-50'}`}
+                                    title="Type"
+                                >
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5 sm:w-6 sm:h-6">
+                                        <rect x="2" y="4" width="20" height="16" rx="2" /><path d="M6 8h.001" /><path d="M10 8h.001" /><path d="M14 8h.001" /><path d="M18 8h.001" /><path d="M6 12h.001" /><path d="M10 12h.001" /><path d="M14 12h.001" /><path d="M18 12h.001" /><path d="M7 16h10" />
+                                    </svg>
+                                </button>
+                                
+                                <div className="relative flex flex-col items-center">
+                                    <button 
+                                        onClick={() => toggleMode('erase')}
+                                        className={`w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center shadow-md transition-all ${mode === 'erase' ? 'bg-orange-500 text-white scale-110' : 'bg-white text-slate-500 hover:bg-slate-50'}`}
+                                        title="Eraser"
+                                    >
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5 sm:w-6 sm:h-6">
+                                            <path d="M18 13l-5-5L3 18h10l5-5z" fill={mode === 'erase' ? 'white' : 'currentColor'} stroke="none" />
+                                            <path d="M15 6l3 3 3-3-3-3-3 3z" stroke={mode === 'erase' ? 'white' : 'currentColor'} />
+                                            <path d="M18 13l-5-5L3 18h10l5-5z" stroke={mode === 'erase' ? 'white' : 'currentColor'} fill="none" />
+                                        </svg>
+                                    </button>
+                                    
+                                    {mode === 'erase' && !isDrawing && (
+                                        <div className="absolute top-full mt-2 flex flex-col gap-2 bg-white p-1.5 rounded-xl shadow-md border border-slate-100 animate-in slide-in-from-top-2 fade-in duration-200 z-30">
+                                            <button 
+                                                onClick={(e) => { e.stopPropagation(); setEraserSize(20); }}
+                                                className={`w-8 h-8 rounded-full border-2 flex items-center justify-center transition-all ${eraserSize === 20 ? 'border-orange-500 bg-orange-50' : 'border-slate-200 hover:border-slate-300'}`}
+                                                title="Medium Eraser"
+                                            >
+                                                <div className="w-3 h-3 bg-slate-600 rounded-full" />
+                                            </button>
+                                            <button 
+                                                onClick={(e) => { e.stopPropagation(); setEraserSize(40); }}
+                                                className={`w-8 h-8 rounded-full border-2 flex items-center justify-center transition-all ${eraserSize === 40 ? 'border-orange-500 bg-orange-50' : 'border-slate-200 hover:border-slate-300'}`}
+                                                title="Big Eraser"
+                                            >
+                                                <div className="w-5 h-5 bg-slate-600 rounded-full" />
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+
+                                <button 
+                                    onClick={clearAll}
+                                    className="w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center bg-white text-slate-500 shadow-md hover:bg-red-50 hover:text-red-500 transition-all"
+                                    title="Clear All"
+                                >
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5 sm:w-6 sm:h-6">
+                                        <polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                                    </svg>
+                                </button>
+                            </div>
+
+                            {/* Canvas Layer */}
+                            <canvas
+                                ref={canvasRef}
+                                className={`absolute inset-0 w-full h-full touch-none ${mode === 'draw' || mode === 'erase' ? 'z-10' : 'z-0 pointer-events-none'}`}
+                                style={{ cursor: getCursorStyle() }}
+                                onMouseDown={startDrawing}
+                                onMouseMove={draw}
+                                onMouseUp={stopDrawing}
+                                onMouseLeave={stopDrawing}
+                                onTouchStart={startDrawing}
+                                onTouchMove={draw}
+                                onTouchEnd={stopDrawing}
+                            />
+
+                            {/* Custom Eraser Cursor for Touch */}
+                            {mode === 'erase' && isDrawing && (
+                                <div 
+                                    className="absolute rounded-full border-2 border-slate-600 bg-white/50 pointer-events-none z-50"
+                                    style={{
+                                        width: eraserSize,
+                                        height: eraserSize,
+                                        left: cursorPos.x,
+                                        top: cursorPos.y,
+                                        transform: 'translate(-50%, -50%)'
+                                    }}
+                                />
+                            )}
+
+                            {/* Textarea Layer */}
+                            <textarea
+                                value={text}
+                                onChange={(e) => setText(e.target.value)}
+                                placeholder={hasDrawn ? "" : "在這裡寫下你的想法..."}
+                                className={`absolute inset-0 w-full h-full bg-transparent p-4 pt-20 pr-4 landscape:pt-6 landscape:pr-44 sm:p-6 sm:pt-24 sm:pr-12 sm:landscape:pt-8 sm:landscape:pr-56 text-base sm:text-xl leading-relaxed resize-none focus:outline-none select-text ${mode === 'type' ? 'z-10' : 'z-0 pointer-events-none opacity-50'}`}
+                            />
+                        </div>
+                    </div>
+
+                    {/* Enlarged Emotion Modal */}
+                    {enlargedEmotion && (
+                        <div 
+                            className={`fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 transition-opacity duration-700 ease-in-out ${isEnlargedVisible ? 'opacity-100' : 'opacity-0'}`}
+                            onClick={closeEnlarged}
+                        >
+                            <div 
+                                className={`relative bg-white rounded-3xl shadow-2xl p-6 flex items-center gap-4 transition-all duration-700 ease-out transform 
+                                ${isEnlargedVisible ? 'scale-100 opacity-100' : 'scale-90 opacity-0'}
+                                ${layoutMode === 'mobile-landscape' 
+                                    ? 'w-[90vw] max-w-3xl h-[85vh] flex-row gap-8 p-4' 
+                                    : 'w-[90vw] max-w-lg max-h-[85vh] flex-col'
+                                }`}
+                                onClick={(e) => e.stopPropagation()}
+                            >
+                                {/* Image Container - Flexible height */}
+                                <div className={`flex-1 min-h-0 flex items-center justify-center ${layoutMode === 'mobile-landscape' ? 'w-1/2 h-full justify-end' : 'w-full'}`}>
+                                    <img 
+                                        src={`https://github.com/epcashadhd/emotionmeter/blob/main/${enlargedEmotion.type}${enlargedEmotion.index}.png?raw=true`}
+                                        alt="Enlarged Emotion"
+                                        className="max-w-full max-h-full object-contain drop-shadow-md"
+                                        referrerPolicy="no-referrer"
+                                    />
+                                </div>
+
+                                {/* Definition Text */}
+                                {EMOTION_DEFINITIONS[enlargedEmotion.id] && (
+                                    <div className={`shrink-0 ${layoutMode === 'mobile-landscape' ? 'w-1/2 flex items-center text-left' : 'w-full text-center'}`}>
+                                        <p className="text-slate-600 text-xl font-medium leading-relaxed whitespace-pre-wrap">
+                                            {EMOTION_DEFINITIONS[enlargedEmotion.id].desc}
+                                        </p>
+                                    </div>
+                                )}
+
+                                <button 
+                                    className="absolute top-4 right-4 w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center hover:bg-slate-200 transition-colors shadow-sm z-10"
+                                    onClick={closeEnlarged}
+                                >
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6 text-slate-600">
+                                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                    )}
                 </div>
-              </div>
-            </div>
+            );
+        }
 
-            <div className="w-full space-y-2 sm:space-y-4 pt-2">
-              <label htmlFor="emotion-slider" className="sr-only">Emotion Level</label>
-              <div className="relative w-full h-12 sm:h-14 flex items-center justify-center">
-                <input
-                  id="emotion-slider"
-                  type="range"
-                  min="1"
-                  max="7"
-                  step="1"
-                  value={level}
-                  onChange={(e) => setLevel(Number(e.target.value))}
-                  className="w-full appearance-none bg-transparent focus:outline-none z-20"
-                />
-              </div>
-            </div>
-          </div>
-        </div>
+        function EmotionExplorerTool({ onBack, show }) {
+            const [selectedEmotion, setSelectedEmotion] = useState(null);
+            const [enlargedEmotion, setEnlargedEmotion] = useState(null);
+            const [isEnlargedVisible, setIsEnlargedVisible] = useState(false);
+            const [layoutMode, setLayoutMode] = useState('desktop'); // 'mobile-portrait', 'mobile-landscape', 'tablet-portrait', 'desktop'
+            const [step, setStep] = useState('select'); // 'select' | 'write'
+            const [isTransitioning, setIsTransitioning] = useState(false);
 
-        <div className="w-full pt-4 sm:pt-6 border-t border-slate-200 mt-4 sm:mt-6">
-          <p className="advice-text text-xl sm:text-3xl text-slate-600 text-center font-bold leading-relaxed">
-            {level >= 6 ? "深呼吸，慢慢數到十。" : 
-             level >= 4 ? "找人說說你的煩惱。" : 
-             level >= 3 ? "聽聽音樂，轉換心情。" :
-             "保持笑容，傳遞快樂！"}
-          </p>
-        </div>
-      </div>
-    </div>
-  );
-}
+            // Derived show state for children to handle internal transitions
+            const contentShow = show && !isTransitioning;
+
+            useEffect(() => {
+                const checkLayout = () => {
+                    const width = window.innerWidth;
+                    const height = window.innerHeight;
+                    const isLandscape = width > height;
+
+                    if (isLandscape && height <= 500) {
+                        setLayoutMode('mobile-landscape');
+                    } else if (!isLandscape && width <= 600) {
+                        setLayoutMode('mobile-portrait');
+                    } else if (!isLandscape && width <= 1024) {
+                        setLayoutMode('tablet-portrait');
+                    } else {
+                        setLayoutMode('desktop');
+                    }
+                };
+                
+                checkLayout();
+                window.addEventListener('resize', checkLayout);
+                return () => window.removeEventListener('resize', checkLayout);
+            }, []);
+
+            // Data generation
+            const positiveEmotions = Array.from({ length: 13 }, (_, i) => ({ id: `p${i+1}`, type: 'positive', index: i + 1 }));
+            const negativeEmotions = Array.from({ length: 13 }, (_, i) => ({ id: `n${i+1}`, type: 'negative', index: i + 1 }));
+
+            let rows = [];
+            const isPortrait = layoutMode === 'mobile-portrait' || layoutMode === 'tablet-portrait';
+
+            if (isPortrait) {
+                // Mobile Portrait / Tablet Portrait: 3, 2, 3, 2, 3 pattern (Total 13)
+                rows = [
+                    positiveEmotions.slice(0, 3),
+                    positiveEmotions.slice(3, 5),
+                    positiveEmotions.slice(5, 8),
+                    positiveEmotions.slice(8, 10),
+                    positiveEmotions.slice(10, 13),
+                    negativeEmotions.slice(0, 3),
+                    negativeEmotions.slice(3, 5),
+                    negativeEmotions.slice(5, 8),
+                    negativeEmotions.slice(8, 10),
+                    negativeEmotions.slice(10, 13)
+                ];
+            } else {
+                // Desktop / Mobile Landscape: 7, 6 pattern
+                rows = [
+                    positiveEmotions.slice(0, 7),
+                    positiveEmotions.slice(7, 13),
+                    negativeEmotions.slice(0, 7),
+                    negativeEmotions.slice(7, 13)
+                ];
+            }
+
+            const getSizeClass = () => {
+                switch(layoutMode) {
+                    case 'mobile-landscape': return 'w-32 h-32';
+                    case 'tablet-portrait': return 'w-52 h-52 sm:w-60 sm:h-60';
+                    case 'mobile-portrait': return 'w-24 h-24 sm:w-32 sm:h-32';
+                    default: return 'w-20 h-20 sm:w-24 sm:h-24 md:w-32 md:h-32 xl:w-36 xl:h-36 2xl:w-40 2xl:h-40';
+                }
+            };
+
+            const handleEmotionClick = (e, id) => {
+                e.stopPropagation();
+                if (selectedEmotion === id) {
+                    // Find the emotion object to enlarge
+                    const allEmotions = [...positiveEmotions, ...negativeEmotions];
+                    const emotion = allEmotions.find(e => e.id === id);
+                    setEnlargedEmotion(emotion);
+                    // Small delay to allow render before transition
+                    requestAnimationFrame(() => {
+                        requestAnimationFrame(() => {
+                            setIsEnlargedVisible(true);
+                        });
+                    });
+                } else {
+                    setSelectedEmotion(id);
+                }
+            };
+
+            const closeEnlarged = (e) => {
+                if (e) e.stopPropagation();
+                setIsEnlargedVisible(false);
+                setTimeout(() => {
+                    setEnlargedEmotion(null);
+                }, 700); // Match duration
+            };
+
+            useEffect(() => {
+                if (!enlargedEmotion) return;
+                const handleKeyDown = (e) => {
+                    if (e.key === 'Escape') {
+                        closeEnlarged();
+                    }
+                };
+                window.addEventListener('keydown', handleKeyDown);
+                return () => window.removeEventListener('keydown', handleKeyDown);
+            }, [enlargedEmotion]);
+
+            const handleNext = (e) => {
+                e.stopPropagation();
+                if (selectedEmotion) {
+                    setIsTransitioning(true);
+                    setTimeout(() => {
+                        setStep('write');
+                        // Small delay to ensure render before fading in
+                        setTimeout(() => setIsTransitioning(false), 50);
+                    }, 700);
+                }
+            };
+
+            const handleBackFromWriting = () => {
+                setIsTransitioning(true);
+                setTimeout(() => {
+                    setStep('select');
+                    setTimeout(() => setIsTransitioning(false), 50);
+                }, 700);
+            };
+
+            // Find selected emotion data
+            const allEmotions = [...positiveEmotions, ...negativeEmotions];
+            const selectedEmotionData = allEmotions.find(e => e.id === selectedEmotion);
+
+            if (step === 'write' && selectedEmotionData) {
+                return (
+                    <EmotionWritingView 
+                        emotion={selectedEmotionData} 
+                        onBack={handleBackFromWriting}
+                        onHome={onBack}
+                        show={contentShow}
+                    />
+                );
+            }
+
+            let globalIndex = 0;
+
+            return (
+                <div 
+                    className={`fixed inset-0 w-full h-full bg-[#FDFBF7] flex flex-col transition-opacity duration-700 ease-in-out select-none ${contentShow ? 'opacity-100' : 'opacity-0'}`}
+                    onClick={() => setSelectedEmotion(null)}
+                >
+                    {/* Header */}
+                    <div className="w-full p-2 flex justify-between items-center z-20 shrink-0 bg-[#FDFBF7]/95 backdrop-blur-sm shadow-sm">
+                        {/* Home Button (Top Left) */}
+                        <button 
+                            onClick={(e) => { e.stopPropagation(); onBack(); }}
+                            className="w-10 h-10 flex items-center justify-center bg-white rounded-full shadow-md border border-slate-100 hover:scale-105 active:scale-95 transition-all duration-300"
+                        >
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5 text-slate-600">
+                                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                                <polyline points="9 22 9 12 15 12 15 22"></polyline>
+                            </svg>
+                        </button>
+
+                        <h1 className="text-xl md:text-2xl font-bold text-slate-700 tracking-tight">情緒探索器</h1>
+
+                        {/* Next Button (Top Right) */}
+                        <div className="w-10 h-10 relative">
+                            <button 
+                                onClick={handleNext}
+                                className={`absolute inset-0 w-full h-full flex items-center justify-center bg-orange-500 rounded-full shadow-md border-2 border-orange-400 hover:bg-orange-600 transition-all duration-500 transform ${selectedEmotion ? 'opacity-100 scale-100 rotate-0' : 'opacity-0 scale-50 rotate-180 pointer-events-none'}`}
+                            >
+                                <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
+                                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                                    <polyline points="12 5 19 12 12 19"></polyline>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Content */}
+                    <div className="flex-1 flex flex-col items-center gap-2 sm:gap-3 p-2 overflow-y-auto pb-4 pt-4">
+                        {rows.map((row, rowIndex) => (
+                            <div key={rowIndex} className={`flex flex-wrap justify-center gap-2 sm:gap-4 xl:gap-6 ${(!isPortrait && rowIndex === 1) || (isPortrait && rowIndex === 4) ? 'mb-4 sm:mb-6' : ''}`}>
+                                {row.map((emotion) => {
+                                    const delay = 100 + (globalIndex * 40); // Staggered delay
+                                    globalIndex++;
+                                    
+                                    return (
+                                        <button
+                                            key={emotion.id}
+                                            onClick={(e) => handleEmotionClick(e, emotion.id)}
+                                            style={{
+                                                animation: `fadeInUp 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) forwards`,
+                                                animationDelay: `${delay}ms`,
+                                                opacity: 0 // Start invisible
+                                            }}
+                                            className={`relative group transition-all duration-300 ${
+                                                selectedEmotion === emotion.id 
+                                                    ? 'scale-110 z-10' 
+                                                    : 'hover:scale-105 opacity-90 hover:opacity-100'
+                                            }`}
+                                        >
+                                            <div className={`${getSizeClass()} rounded-2xl bg-white shadow-sm border-2 flex items-center justify-center overflow-hidden transition-all duration-300 ${
+                                                selectedEmotion === emotion.id 
+                                                    ? 'border-orange-400 shadow-orange-200 shadow-xl ring-4 ring-orange-100' 
+                                                    : 'border-slate-100 group-hover:border-orange-200'
+                                            }`}>
+                                                <img 
+                                                    src={`https://github.com/epcashadhd/emotionmeter/blob/main/${emotion.type}${emotion.index}.png?raw=true`}
+                                                    alt={`${emotion.type} ${emotion.index}`}
+                                                    className="w-[90%] h-[90%] object-contain"
+                                                    referrerPolicy="no-referrer"
+                                                />
+                                            </div>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        ))}
+                    </div>
+
+                    {/* Enlarged Emotion Modal */}
+                    {enlargedEmotion && (
+                        <div 
+                            className={`fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 transition-opacity duration-700 ease-in-out ${isEnlargedVisible ? 'opacity-100' : 'opacity-0'}`}
+                            onClick={closeEnlarged}
+                        >
+                            <div 
+                                className={`relative bg-white rounded-3xl shadow-2xl p-6 flex items-center gap-4 transition-all duration-700 ease-out transform 
+                                ${isEnlargedVisible ? 'scale-100 opacity-100' : 'scale-90 opacity-0'}
+                                ${layoutMode === 'mobile-landscape' 
+                                    ? 'w-[90vw] max-w-3xl h-[85vh] flex-row gap-8 p-4' 
+                                    : 'w-[90vw] max-w-lg max-h-[85vh] flex-col'
+                                }`}
+                                onClick={(e) => e.stopPropagation()}
+                            >
+                                {/* Image Container - Flexible height */}
+                                <div className={`flex-1 min-h-0 flex items-center justify-center ${layoutMode === 'mobile-landscape' ? 'w-1/2 h-full justify-end' : 'w-full'}`}>
+                                    <img 
+                                        src={`https://github.com/epcashadhd/emotionmeter/blob/main/${enlargedEmotion.type}${enlargedEmotion.index}.png?raw=true`}
+                                        alt="Enlarged Emotion"
+                                        className="max-w-full max-h-full object-contain drop-shadow-md"
+                                        referrerPolicy="no-referrer"
+                                    />
+                                </div>
+
+                                {/* Definition Text */}
+                                {EMOTION_DEFINITIONS[enlargedEmotion.id] && (
+                                    <div className={`shrink-0 ${layoutMode === 'mobile-landscape' ? 'w-1/2 flex items-center text-left' : 'w-full text-center'}`}>
+                                        <p className="text-slate-600 text-xl font-medium leading-relaxed whitespace-pre-wrap">
+                                            {EMOTION_DEFINITIONS[enlargedEmotion.id].desc}
+                                        </p>
+                                    </div>
+                                )}
+
+                                <button 
+                                    className="absolute top-4 right-4 w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center hover:bg-slate-200 transition-colors shadow-sm z-10"
+                                    onClick={closeEnlarged}
+                                >
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6 text-slate-600">
+                                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        function App() {
+            const [view, setView] = useState('menu'); // 'menu' or 'meter'
+            const [transitionState, setTransitionState] = useState('idle'); // 'idle', 'fading-out', 'mounting', 'fading-in'
+
+            // Preload images for smoother experience
+            useEffect(() => {
+                const preloadImages = async () => {
+                    const imageUrls = [
+                        LOGO_URL,
+                        // Basic emotions (1-7)
+                        ...Array.from({ length: 7 }, (_, i) => `https://github.com/epcashadhd/emotionmeter/blob/main/basic${i+1}.png?raw=true`),
+                        // Positive emotions (1-13)
+                        ...Array.from({ length: 13 }, (_, i) => `https://github.com/epcashadhd/emotionmeter/blob/main/positive${i+1}.png?raw=true`),
+                        // Negative emotions (1-13)
+                        ...Array.from({ length: 13 }, (_, i) => `https://github.com/epcashadhd/emotionmeter/blob/main/negative${i+1}.png?raw=true`),
+                        // Body scan image
+                        "https://github.com/epcashadhd/emotionmeter/blob/main/body.png?raw=true"
+                    ];
+
+                    imageUrls.forEach(url => {
+                        const img = new Image();
+                        img.src = url;
+                    });
+                };
+                
+                // Start preloading after a short delay to allow initial render
+                const timer = setTimeout(preloadImages, 1000);
+                return () => clearTimeout(timer);
+            }, []);
+
+            const handleNavigate = (target) => {
+                setTransitionState('fading-out');
+                setTimeout(() => {
+                    setView(target);
+                    setTransitionState('mounting');
+                    
+                    // Small delay to ensure mount happens before fade-in starts
+                    setTimeout(() => {
+                        setTransitionState('fading-in');
+                        setTimeout(() => {
+                            setTransitionState('idle');
+                        }, 700); // Match fade-in duration
+                    }, 50);
+                }, 700); // Match fade-out duration
+            };
+
+            const show = transitionState === 'idle' || transitionState === 'fading-in';
+
+            return (
+                <React.Fragment>
+                    {view === 'menu' && (
+                        <MainMenu 
+                            onNavigate={handleNavigate} 
+                            show={show} 
+                        />
+                    )}
+                    
+                    {view === 'meter' && (
+                        <EmotionMeterTool 
+                            onBack={() => handleNavigate('menu')} 
+                            show={show}
+                        />
+                    )}
+
+                    {view === 'explorer' && (
+                        <EmotionExplorerTool 
+                            onBack={() => handleNavigate('menu')} 
+                            show={show}
+                        />
+                    )}
+
+                    {view === 'breathing' && (
+                        <BreathingExercise 
+                            onBack={() => handleNavigate('menu')} 
+                            show={show}
+                        />
+                    )}
+                    
+                    {/* Floating logo only on menu */}
+                    <FloatingLogo visible={view === 'menu'} show={show} />
+                </React.Fragment>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
