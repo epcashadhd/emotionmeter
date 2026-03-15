@@ -1130,38 +1130,167 @@
 
         function BodyScanTool() {
             const [selectedPart, setSelectedPart] = useState(null);
+            const [stage, setStage] = useState(0);
             const [isPlaying, setIsPlaying] = useState(false);
             const audioRef = useRef(null);
+            const fadeIntervalRef = useRef(null);
+
+            const MUSIC_BASE_URL = "https://raw.githubusercontent.com/epcashadhd/emotionmeter/refs/heads/main/";
+            
+            const BODY_PARTS = [
+                { id: 'head', name: '頭部', top: '8.4%', left: '46.1%', music: 'music2.mp3' },
+                { id: 'shoulders', name: '肩膀', top: '30.6%', left: '32.0%', music: 'music6.mp3' },
+                { id: 'chest', name: '胸口', top: '39.0%', left: '57.9%', music: 'music1.mp3' },
+                { id: 'stomach', name: '胃部', top: '56.4%', left: '50.4%', music: 'music4.mp3' },
+                { id: 'hands', name: '手部', top: '55.0%', left: '18.9%', music: 'music3.mp3' },
+                { id: 'feet', name: '腳部', top: '89.6%', left: '62.9%', music: 'music5.mp3' },
+            ];
 
             useEffect(() => {
-                const audio = new Audio("https://raw.githubusercontent.com/epcashadhd/emotionmeter/refs/heads/main/music2.mp3");
+                const audio = new Audio();
                 audio.loop = true;
                 audioRef.current = audio;
                 return () => {
                     audio.pause();
                     audioRef.current = null;
+                    if (fadeIntervalRef.current) clearInterval(fadeIntervalRef.current);
                 };
             }, []);
 
+            useEffect(() => {
+                if (!selectedPart) {
+                    setStage(0);
+                    return;
+                }
+
+                // Clear any existing fade interval
+                if (fadeIntervalRef.current) {
+                    clearInterval(fadeIntervalRef.current);
+                    fadeIntervalRef.current = null;
+                }
+
+                // Switch music and play
+                if (audioRef.current) {
+                    audioRef.current.volume = 1;
+                    audioRef.current.src = MUSIC_BASE_URL + selectedPart.music;
+                    audioRef.current.play().then(() => {
+                        setIsPlaying(true);
+                    }).catch(err => console.error("Audio play failed:", err));
+                }
+
+                setStage(0);
+                
+                const stage1Timer = setTimeout(() => setStage(1), 12000);
+                const stage2Timer = setTimeout(() => setStage(2), 24000);
+                const stage3Timer = setTimeout(() => setStage(3), 36000);
+                const stage4Timer = setTimeout(() => setStage(4), 48000);
+                
+                // Start gradual fade out when the final stage starts (at 48s)
+                const fadeTimer = setTimeout(() => {
+                    if (audioRef.current) {
+                        const audio = audioRef.current;
+                        const startVolume = 1;
+                        const duration = 12000; // 12 seconds gradual fade
+                        const steps = 60;
+                        const interval = duration / steps;
+                        const volumeStep = startVolume / steps;
+                        let step = 0;
+                        
+                        fadeIntervalRef.current = setInterval(() => {
+                            step++;
+                            if (step >= steps) {
+                                audio.pause();
+                                audio.volume = 1;
+                                setIsPlaying(false);
+                                clearInterval(fadeIntervalRef.current);
+                                fadeIntervalRef.current = null;
+                            } else {
+                                audio.volume = Math.max(0, 1 - (volumeStep * step));
+                            }
+                        }, interval);
+                    }
+                }, 48000);
+
+                const resetTimer = setTimeout(() => {
+                    setSelectedPart(null);
+                }, 60000);
+
+                return () => {
+                    clearTimeout(stage1Timer);
+                    clearTimeout(stage2Timer);
+                    clearTimeout(stage3Timer);
+                    clearTimeout(stage4Timer);
+                    clearTimeout(fadeTimer);
+                    clearTimeout(resetTimer);
+                };
+            }, [selectedPart]);
+
             const toggleMusic = () => {
-                if (!audioRef.current) return;
+                if (!audioRef.current || !audioRef.current.src) return;
                 if (isPlaying) {
                     audioRef.current.pause();
                     setIsPlaying(false);
+                    if (fadeIntervalRef.current) {
+                        clearInterval(fadeIntervalRef.current);
+                        fadeIntervalRef.current = null;
+                    }
+                    audioRef.current.volume = 1;
                 } else {
+                    audioRef.current.volume = 1;
                     audioRef.current.play().catch(err => console.error("Audio play failed:", err));
                     setIsPlaying(true);
                 }
             };
 
-            const BODY_PARTS = [
-                { id: 'head', name: '頭部', top: '8.4%', left: '46.1%' },
-                { id: 'shoulders', name: '肩膀', top: '30.6%', left: '32.0%' },
-                { id: 'chest', name: '胸口', top: '39.0%', left: '57.9%' },
-                { id: 'stomach', name: '胃部', top: '56.4%', left: '50.4%' },
-                { id: 'hands', name: '手部', top: '55.0%', left: '18.9%' },
-                { id: 'feet', name: '腳部', top: '89.6%', left: '62.9%' },
-            ];
+            const BODY_PARTS_TEXT = {
+                head: [
+                    "想像頭部像氣球輕輕往上飄",
+                    "感覺眼皮閉上的重量",
+                    "額頭像平滑鏡面一樣展開",
+                    "留意頭後方接觸空氣的感覺",
+                    "閉上雙眼，保持平靜，靜候音樂淡出"
+                ],
+                shoulders: [
+                    "察覺肩膀目前的高低位置",
+                    "感覺肩膀隨吐氣下降的幅度",
+                    "留意衣物接觸皮膚的觸感",
+                    "想像肩膀像冰塊慢慢融化",
+                    "閉上雙眼，保持平靜，靜候音樂淡出"
+                ],
+                chest: [
+                    "呼吸像海浪平穩拍打岸邊",
+                    "感受每一次吸氣進出的路徑",
+                    "察覺心跳在胸膛跳動的聲音",
+                    "想像胸口撐開一把保護傘",
+                    "閉上雙眼，保持平靜，靜候音樂淡出"
+                ],
+                stomach: [
+                    "感覺肚子隨呼吸向外擴張",
+                    "想像溫暖的陽光停留在中心",
+                    "留意腹部肌肉收縮的過程",
+                    "察覺呼吸在腹部停留的時間",
+                    "閉上雙眼，保持平靜，靜候音樂淡出"
+                ],
+                hands: [
+                    "雙手像羽毛掉落在膝蓋",
+                    "感覺手掌變得很溫暖",
+                    "留意指縫之間流過的空氣",
+                    "察覺雙手放在桌上的重量",
+                    "閉上雙眼，保持平靜，靜候音樂淡出"
+                ],
+                feet: [
+                    "腳掌像大樹根部鑽進泥土",
+                    "感覺腳底踩在地面上的壓力",
+                    "察覺雙腿支撐全身的感覺",
+                    "想像地面像地毯支撐著你",
+                    "閉上雙眼，保持平靜，靜候音樂淡出"
+                ]
+            };
+
+            const getGuidanceText = () => {
+                if (!selectedPart) return "選擇一個身體部位，感受身體的變化";
+                return BODY_PARTS_TEXT[selectedPart.id][stage];
+            };
 
             return (
                 <div className="body-scan-container animate-[gentleFadeIn_0.8s_ease-in-out] relative">
@@ -1217,12 +1346,26 @@
                         </div>
                     </div>
                     
-                    <div className="guidance-area">
-                        <p className="text-slate-700 text-xl sm:text-2xl font-bold leading-relaxed px-2">
-                            {selectedPart 
-                                ? `現在，試著感受一下你的 ${selectedPart.name}...` 
-                                : "請點擊圖片中你感到不舒服的身體部位"}
+                    <div className="guidance-area flex flex-col items-center justify-center">
+                        <p key={selectedPart ? `${selectedPart.id}-${stage}` : 'none'} className="text-slate-700 text-xl sm:text-2xl font-bold leading-relaxed px-2 animate-[fadeInUp_0.5s_ease-out]">
+                            {getGuidanceText()}
                         </p>
+                        {selectedPart && (
+                            <div className="flex gap-3 mt-4">
+                                {[0, 1, 2, 3, 4].map(i => (
+                                    <div 
+                                        key={i}
+                                        className={`w-2.5 h-2.5 rounded-full transition-all duration-500 ${
+                                            i < stage 
+                                                ? 'bg-slate-400' 
+                                                : i === stage 
+                                                    ? 'bg-slate-500 animate-pulse scale-125' 
+                                                    : 'bg-slate-200'
+                                        }`}
+                                    />
+                                ))}
+                            </div>
+                        )}
                     </div>
                 </div>
             );
