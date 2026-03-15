@@ -168,6 +168,13 @@
             .sphere-landscape-instruction-fix {
                 margin-top: -2.5rem !important;
                 height: 4rem !important;
+                width: 100vw !important;
+                left: 50% !important;
+                transform: translateX(-50%) !important;
+            }
+            .sphere-landscape-instruction-fix p {
+                white-space: pre !important;
+                width: 100% !important;
             }
             .mobile-landscape-music {
                 right: 64px !important;
@@ -941,7 +948,7 @@
 
                                     {/* Instruction Text */}
                                     <div className="text-center h-20 sm:h-32 flex flex-col items-center justify-center gap-3 w-full relative sphere-landscape-instruction-fix">
-                                        <p className={`absolute w-full left-0 text-2xl sm:text-3xl text-slate-500 font-bold whitespace-pre-line leading-relaxed transition-opacity duration-500 ${phase === 'prepare' && exerciseType !== 'sphere-intro' ? 'opacity-100 animate-pulse' : 'opacity-0 pointer-events-none'}`}>
+                                        <p className={`absolute w-full left-0 text-2xl sm:text-3xl text-slate-500 font-bold whitespace-pre leading-relaxed transition-opacity duration-500 ${phase === 'prepare' && exerciseType !== 'sphere-intro' ? 'opacity-100 animate-pulse' : 'opacity-0 pointer-events-none'}`}>
                                             {guideText}
                                         </p>
 
