@@ -151,11 +151,11 @@
         @media (max-height: 500px) and (orientation: landscape) {
             .sphere-landscape-size-fix {
                 transform: scale(0.6) !important;
-                margin-top: -0.5rem !important;
+                margin-top: -1.5rem !important;
                 margin-bottom: -1rem !important;
             }
             .sphere-landscape-instruction-fix {
-                margin-top: -1.5rem !important;
+                margin-top: -2.5rem !important;
                 height: 4rem !important;
             }
             .mobile-landscape-music {
@@ -518,7 +518,7 @@
                         </svg>
                     </div>
                     <div className="text-center animate-[fadeInUp_0.5s_ease-out] guide-sentence-container">
-                        <p className="text-slate-500 text-2xl sm:text-2xl tracking-wide font-medium opacity-100">
+                        <p className="text-slate-500 text-xl sm:text-2xl tracking-wide font-medium opacity-100">
                             請跟隨光點，慢慢呼吸...
                         </p>
                     </div>
@@ -929,7 +929,7 @@
 
                                     {/* Instruction Text */}
                                     <div className="text-center h-20 sm:h-32 flex flex-col items-center justify-center gap-3 w-full relative sphere-landscape-instruction-fix">
-                                        <p className={`absolute text-2xl text-slate-500 font-medium whitespace-pre-line leading-relaxed transition-opacity duration-500 ${phase === 'prepare' && exerciseType !== 'sphere-intro' ? 'opacity-100 animate-pulse' : 'opacity-0 pointer-events-none'}`}>
+                                        <p className={`absolute w-full left-0 text-xl sm:text-2xl text-slate-500 font-medium whitespace-pre-line leading-relaxed transition-opacity duration-500 ${phase === 'prepare' && exerciseType !== 'sphere-intro' ? 'opacity-100 animate-pulse' : 'opacity-0 pointer-events-none'}`}>
                                             {guideText}
                                         </p>
 
@@ -1072,6 +1072,7 @@
                                 height: 75vh !important;
                                 width: auto;
                                 flex: 0 0 auto;
+                                margin-top: -1.5rem !important;
                             }
                             .guidance-area {
                                 flex: 1;
