@@ -711,7 +711,13 @@
                         {/* Back Button */}
                         <div className="absolute left-4 sm:left-6 mobile-landscape-home">
                             <button 
-                                onClick={onBack}
+                                onClick={() => {
+                                    setExerciseType(null);
+                                    setDuration(null);
+                                    setExerciseStartTime(null);
+                                    setTotalProgress(0);
+                                    onBack();
+                                }}
                                 className="w-10 h-10 flex items-center justify-center bg-white rounded-full shadow-md border border-slate-100 hover:scale-105 active:scale-95 transition-all duration-300"
                             >
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5 text-slate-600">
@@ -750,6 +756,9 @@
                                         setSelectedPattern(null);
                                         setSelectedDuration(null);
                                         setExerciseType('sphere-intro');
+                                        setDuration(null);
+                                        setExerciseStartTime(null);
+                                        setTotalProgress(0);
                                         setPhase('prepare');
                                     }}
                                     className={`w-12 h-12 sm:w-14 sm:h-14 rounded-2xl flex items-center justify-center transition-all duration-300 shadow-sm border-2 mobile-landscape-btn ${exerciseType && exerciseType.startsWith('sphere') ? 'bg-green-100 border-green-400 scale-110' : 'bg-white border-slate-100 hover:bg-slate-50'}`}
@@ -826,6 +835,9 @@
                                         setSelectedPattern('square');
                                         setSelectedDuration(null);
                                         setExerciseType('square-intro');
+                                        setDuration(null);
+                                        setExerciseStartTime(null);
+                                        setTotalProgress(0);
                                         setPhase('prepare');
                                     }}
                                     className={`w-12 h-12 sm:w-14 sm:h-14 rounded-2xl flex items-center justify-center transition-all duration-300 shadow-sm border-2 mobile-landscape-btn ${exerciseType === 'square' || exerciseType === 'square-intro' ? 'bg-blue-100 border-blue-400 scale-110' : 'bg-white border-slate-100 hover:bg-slate-50'}`}
@@ -883,6 +895,8 @@
                                     setShowSphereOptions(false); 
                                     setShowSquareOptions(false);
                                     setDuration('infinite');
+                                    setExerciseStartTime(null);
+                                    setTotalProgress(0);
                                     setPhase('prepare');
                                 }}
                                 className={`w-12 h-12 sm:w-14 sm:h-14 rounded-2xl flex items-center justify-center transition-all duration-300 shadow-sm border-2 mobile-landscape-btn ${exerciseType === 'body' ? 'bg-orange-100 border-orange-400 scale-110' : 'bg-white border-slate-100 hover:bg-slate-50'}`}
