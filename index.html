@@ -128,6 +128,9 @@
                 width: 2rem !important;
                 height: 2rem !important;
             }
+            .mobile-landscape-emoji {
+                font-size: 1.25rem !important;
+            }
             .mobile-landscape-submenu {
                 top: 48px !important;
             }
@@ -235,6 +238,12 @@
                 transform: scale(1.2);
                 opacity: 0.9;
             }
+        }
+        @keyframes slowFadeInOut {
+            0% { opacity: 0; transform: translateY(5px); }
+            15% { opacity: 1; transform: translateY(0); }
+            85% { opacity: 1; transform: translateY(0); }
+            100% { opacity: 0; transform: translateY(-5px); }
         }
     </style>
 </head>
@@ -783,7 +792,7 @@
                                             className="fixed inset-0 z-10" 
                                             onClick={() => setShowSphereOptions(false)}
                                         />
-                                        <div className="absolute top-[60px] sm:top-[70px] left-1/2 -translate-x-1/2 z-20 mobile-landscape-submenu">
+                                        <div className="fixed top-[64px] sm:top-[80px] left-1/2 -translate-x-1/2 z-50 mobile-landscape-submenu">
                                             <div className="flex flex-col gap-3 bg-white/95 backdrop-blur-md p-4 rounded-2xl shadow-xl border border-slate-100 animate-[fadeInUp_0.3s_ease-out] w-max">
                                                 <div className="flex gap-2 justify-center">
                                                     <button 
@@ -862,7 +871,7 @@
                                             className="fixed inset-0 z-10" 
                                             onClick={() => setShowSquareOptions(false)}
                                         />
-                                        <div className="absolute top-[60px] sm:top-[70px] left-1/2 -translate-x-1/2 z-20 mobile-landscape-submenu">
+                                        <div className="fixed top-[64px] sm:top-[80px] left-1/2 -translate-x-1/2 z-50 mobile-landscape-submenu">
                                             <div className="flex flex-col gap-3 bg-white/95 backdrop-blur-md p-4 rounded-2xl shadow-xl border border-slate-100 animate-[fadeInUp_0.3s_ease-out] w-max">
                                                 <div className="flex gap-2 justify-center">
                                                     <button 
@@ -915,6 +924,21 @@
                                     <path d="M12 2a2 2 0 1 1 0 4 2 2 0 0 1 0-4zm-1.5 5h3a2 2 0 0 1 2 2v5.5h-1.5V22h-4v-7.5h-1.5V9a2 2 0 0 1 2-2z" />
                                 </svg>
                             </button>
+
+                            <button 
+                                onClick={() => { 
+                                    setExerciseType('emotion-tree'); 
+                                    setShowSphereOptions(false); 
+                                    setShowSquareOptions(false);
+                                    setDuration('infinite');
+                                    setExerciseStartTime(null);
+                                    setTotalProgress(0);
+                                    setPhase('prepare');
+                                }}
+                                className={`w-12 h-12 sm:w-14 sm:h-14 rounded-2xl flex items-center justify-center transition-all duration-300 shadow-sm border-2 mobile-landscape-btn ${exerciseType === 'emotion-tree' ? 'bg-emerald-100 border-emerald-400 scale-110' : 'bg-white border-slate-100 hover:bg-slate-50'}`}
+                            >
+                                <span className="text-2xl sm:text-3xl mobile-landscape-emoji">🌳</span>
+                            </button>
                         </div>
                     </div>
 
@@ -929,7 +953,7 @@
                     )}
 
                     {/* Exercise Content */}
-                    <div className={`flex-1 w-full flex flex-col items-center justify-center relative transition-all duration-700 ${isTransitioning ? 'opacity-0 scale-95' : 'opacity-100 scale-100'} ${exerciseType === 'body' ? '' : 'mobile-landscape-scale'}`}>
+                    <div className={`flex-1 w-full flex flex-col items-center justify-center relative transition-all duration-700 ${isTransitioning ? 'opacity-0 scale-95' : 'opacity-100 scale-100'} ${exerciseType === 'body' || exerciseType === 'emotion-tree' ? '' : 'mobile-landscape-scale'}`}>
                         {exerciseType && exerciseType.startsWith('sphere') && (
                             <>
                                 <div className="relative flex flex-col items-center justify-center gap-8 sm:gap-12 mobile-landscape-compact">
@@ -1050,6 +1074,10 @@
                             <BodyScanTool key={restartKey} />
                         )}
 
+                        {exerciseType === 'emotion-tree' && (
+                            <EmotionTreeTool key={restartKey} />
+                        )}
+
                         {/* Guidance Text for Intro States */}
                         {(!exerciseType || exerciseType === 'sphere-intro' || exerciseType === 'square-intro') && (
                             <div 
@@ -1154,6 +1182,311 @@
                             to { opacity: 1; transform: translateY(0); }
                         }
                     `}</style>
+                </div>
+            );
+        }
+
+        function EmotionTreeTool() {
+            const [growth, setGrowth] = useState(0);
+            const [isPressing, setIsPressing] = useState(false);
+            const [isComplete, setIsComplete] = useState(false);
+            const [sway, setSway] = useState(0);
+            const [cycleTime, setCycleTime] = useState(0); // 0-12s cycle
+            const [musicStarted, setMusicStarted] = useState(false);
+            
+            const audioRef = useRef(null);
+            const growthRef = useRef(0);
+            const lastTimeRef = useRef(null);
+            const treeStructureRef = useRef(null);
+            const cycleRef = useRef(0);
+            const fadeIntervalRef = useRef(null);
+
+            // Generate tree structure once
+            if (!treeStructureRef.current) {
+                const generateTree = (depth, angle, length, curve = 0) => {
+                    if (depth === 0) return null;
+                    const branches = [];
+                    
+                    // More varied branch counts for a more natural, non-symmetric look
+                    let numBranches = 0;
+                    if (depth > 1) {
+                        const rand = Math.random();
+                        if (depth > 6) {
+                            // Main trunk/major branches: usually 2, sometimes 3
+                            numBranches = rand > 0.1 ? 2 : 3;
+                        } else if (depth > 3) {
+                            // Middle branches: more likely to split into 3 for density
+                            numBranches = rand > 0.4 ? 3 : 2;
+                        } else {
+                            // Tips: split into 2 or 3 for more "thin sticks"
+                            numBranches = rand > 0.3 ? 2 : 3;
+                        }
+                    }
+                    
+                    for (let i = 0; i < numBranches; i++) {
+                        // More varied spread and angles
+                        const spread = 30 + Math.random() * 45;
+                        let angleOffset = 0;
+                        if (numBranches === 1) {
+                            angleOffset = Math.random() * 30 - 15;
+                        } else if (numBranches === 2) {
+                            angleOffset = (i === 0 ? -spread/2 : spread/2) + (Math.random() * 20 - 10);
+                        } else {
+                            angleOffset = (i === 0 ? -spread/2 : (i === 1 ? 0 : spread/2)) + (Math.random() * 20 - 10);
+                        }
+                        
+                        const newAngle = angle + angleOffset;
+                        // More varied length for organic feel
+                        const newLength = length * (0.68 + Math.random() * 0.25);
+                        const nextCurve = (Math.random() * 30 - 15);
+                        const thicknessScale = 0.7 + Math.random() * 0.6; // Varied thickness
+                        branches.push(generateTree(depth - 1, newAngle, newLength, nextCurve, thicknessScale));
+                    }
+                    return { angle, length, branches, curve, thicknessScale: arguments[4] || 1, id: Math.random() };
+                };
+                // Increase depth to 8 for more detail and density
+                treeStructureRef.current = generateTree(8, 0, 70, 0);
+            }
+
+            useEffect(() => {
+                const audio = new Audio(BASE_URL + 'music2.mp3');
+                audio.loop = true;
+                audioRef.current = audio;
+                
+                const handleKeyDown = (e) => {
+                    if (e.code === 'Space') {
+                        e.preventDefault();
+                        setIsPressing(true);
+                        setMusicStarted(true);
+                    }
+                };
+                const handleKeyUp = (e) => {
+                    if (e.code === 'Space') {
+                        setIsPressing(false);
+                    }
+                };
+
+                window.addEventListener('keydown', handleKeyDown);
+                window.addEventListener('keyup', handleKeyUp);
+
+                return () => {
+                    audio.pause();
+                    if (fadeIntervalRef.current) clearInterval(fadeIntervalRef.current);
+                    window.removeEventListener('keydown', handleKeyDown);
+                    window.removeEventListener('keyup', handleKeyUp);
+                };
+            }, []);
+
+            useEffect(() => {
+                if (musicStarted && !isComplete) {
+                    if (audioRef.current) {
+                        audioRef.current.volume = 1;
+                        audioRef.current.play().catch(e => console.log(e));
+                    }
+                } else if (isComplete) {
+                    // Fade out music instead of stopping suddenly
+                    const audio = audioRef.current;
+                    if (audio) {
+                        let vol = audio.volume;
+                        if (fadeIntervalRef.current) clearInterval(fadeIntervalRef.current);
+                        fadeIntervalRef.current = setInterval(() => {
+                            vol -= 0.05;
+                            if (vol <= 0) {
+                                if (audioRef.current) {
+                                    audioRef.current.volume = 0;
+                                    audioRef.current.pause();
+                                }
+                                if (fadeIntervalRef.current) clearInterval(fadeIntervalRef.current);
+                                fadeIntervalRef.current = null;
+                            } else {
+                                if (audioRef.current) audioRef.current.volume = Math.max(0, vol);
+                            }
+                        }, 200);
+                    }
+                } else {
+                    audioRef.current?.pause();
+                }
+            }, [musicStarted, isComplete]);
+
+            useEffect(() => {
+                const handleGlobalUp = () => setIsPressing(false);
+                window.addEventListener('mouseup', handleGlobalUp);
+                window.addEventListener('touchend', handleGlobalUp);
+                window.addEventListener('touchcancel', handleGlobalUp);
+                return () => {
+                    window.removeEventListener('mouseup', handleGlobalUp);
+                    window.removeEventListener('touchend', handleGlobalUp);
+                    window.removeEventListener('touchcancel', handleGlobalUp);
+                };
+            }, []);
+
+            useEffect(() => {
+                let frame;
+                const animate = (time) => {
+                    if (!lastTimeRef.current) lastTimeRef.current = time;
+                    const delta = time - lastTimeRef.current;
+                    lastTimeRef.current = time;
+
+                    if (musicStarted && !isComplete) {
+                        // Update cycle time (0-10s cycle for slower breathing)
+                        cycleRef.current = (cycleRef.current + delta) % 10000;
+                        setCycleTime(cycleRef.current / 1000);
+
+                        // Grow whenever pressing
+                        if (isPressing) {
+                            // Grow 96s of total pressing time to full (1.0) to match the music duration (1m 36s)
+                            growthRef.current = Math.min(1, growthRef.current + delta / 96000);
+                            setGrowth(growthRef.current);
+                            if (growthRef.current >= 1) {
+                                setIsComplete(true);
+                            }
+                        }
+                    }
+
+                    // Sway animation
+                    setSway(Math.sin(time / 1000) * 2);
+
+                    frame = requestAnimationFrame(animate);
+                };
+                frame = requestAnimationFrame(animate);
+                return () => cancelAnimationFrame(frame);
+            }, [isPressing, isComplete, musicStarted]);
+
+            const renderBranch = (branch, x, y, currentAngle, currentGrowth, depth) => {
+                if (!branch) return null;
+                
+                // Adjust threshold for deeper tree (8 levels)
+                const branchThreshold = (8 - depth) / 8;
+                const localGrowth = Math.max(0, Math.min(1, (currentGrowth - branchThreshold) * 8));
+                
+                if (localGrowth <= 0) return null;
+
+                const angleRad = (currentAngle + branch.angle + (depth < 6 ? sway * (6 - depth) * 0.5 : 0)) * Math.PI / 180;
+                const endX = x + branch.length * Math.sin(angleRad) * localGrowth;
+                const endY = y - branch.length * Math.cos(angleRad) * localGrowth;
+
+                // Control point for quadratic curve to make it look organic
+                const midX = x + (endX - x) / 2 + Math.cos(angleRad + Math.PI/2) * (branch.curve || 0) * localGrowth;
+                const midY = y + (endY - y) / 2 + Math.sin(angleRad + Math.PI/2) * (branch.curve || 0) * localGrowth;
+
+                return (
+                    <g key={branch.id}>
+                        <path 
+                            d={`M ${x} ${y} Q ${midX} ${midY} ${endX} ${endY}`}
+                            stroke={depth > 4 ? "#3E2723" : (depth > 2 ? "#2E7D32" : "#4CAF50")} 
+                            strokeWidth={(depth * 0.8 + 0.5) * (branch.thicknessScale || 1)} 
+                            fill="none"
+                            strokeLinecap="round"
+                        />
+                        {branch.branches.map(b => renderBranch(b, endX, endY, currentAngle + branch.angle, currentGrowth, depth - 1))}
+                        
+                        {/* More leaves at the tips for a dense style */}
+                        {depth <= 4 && (
+                            <g opacity={Math.max(0, Math.min(1, (localGrowth - 0.2) * 1.25))}>
+                                <circle cx={endX} cy={endY} r={depth === 1 ? 6 : 4} fill={depth === 1 ? "#A5D6A7" : "#81C784"} opacity="0.6" />
+                                {depth <= 2 && (
+                                    <>
+                                        <circle cx={endX + 5} cy={endY - 4} r="3" fill="#C8E6C9" opacity="0.5" />
+                                        <circle cx={endX - 5} cy={endY + 3} r="3.5" fill="#81C784" opacity="0.5" />
+                                        <circle cx={endX + 3} cy={endY + 5} r="2.5" fill="#66BB6A" opacity="0.4" />
+                                        <circle cx={endX - 3} cy={endY - 5} r="2.8" fill="#4CAF50" opacity="0.4" />
+                                        <circle cx={endX + 7} cy={endY} r="2.2" fill="#A5D6A7" opacity="0.4" />
+                                        <circle cx={endX - 7} cy={endY} r="2.2" fill="#81C784" opacity="0.4" />
+                                        <circle cx={endX + 4} cy={endY + 8} r="2" fill="#A5D6A7" opacity="0.3" />
+                                        <circle cx={endX - 4} cy={endY - 8} r="2" fill="#81C784" opacity="0.3" />
+                                        <circle cx={endX + 9} cy={endY - 2} r="1.8" fill="#C8E6C9" opacity="0.3" />
+                                        <circle cx={endX - 9} cy={endY + 2} r="1.8" fill="#66BB6A" opacity="0.3" />
+                                    </>
+                                )}
+                                {depth === 1 && (
+                                    <>
+                                        <circle cx={endX + 8} cy={endY + 2} r="2.5" fill="#A5D6A7" opacity="0.5" />
+                                        <circle cx={endX - 8} cy={endY - 2} r="3" fill="#C8E6C9" opacity="0.5" />
+                                        <circle cx={endX} cy={endY - 8} r="2.5" fill="#E8F5E9" opacity="0.4" />
+                                        <circle cx={endX + 2} cy={endY - 10} r="2" fill="#A5D6A7" opacity="0.3" />
+                                        <circle cx={endX - 2} cy={endY + 10} r="2" fill="#81C784" opacity="0.3" />
+                                    </>
+                                )}
+                            </g>
+                        )}
+                    </g>
+                );
+            };
+
+            const isInhalePhase = cycleTime < 5;
+            const glowScale = musicStarted && !isComplete ? (isInhalePhase ? (cycleTime / 5) : (1 - (cycleTime - 5) / 5)) : 0;
+            const showGlow = growth > 0;
+
+            const getGuidance = () => {
+                if (isComplete) return { line1: "練習完成", line2: "小樹已經茂盛成長，感受此刻的平靜" };
+                if (!musicStarted) return { line1: "準備開始", line2: "按住下方的影子，讓小樹隨你的呼吸茁壯成長" };
+                return {
+                    line1: isInhalePhase ? "吸氣" : "呼氣",
+                    line2: ""
+                };
+            };
+            const { line1, line2 } = getGuidance();
+
+            return (
+                <div className="body-scan-container animate-[gentleFadeIn_0.8s_ease-in-out]">
+                    <div className="body-image-wrapper !max-h-[50vh] !mt-0 !aspect-square">
+                        {/* Tree Canvas */}
+                        <svg viewBox="-200 -350 400 450" className="w-full h-full drop-shadow-xl overflow-visible">
+                            {/* Shadow (Floor) - Now the interaction area */}
+                            <ellipse 
+                                key="interaction-shadow"
+                                cx="0" cy="10" rx="140" ry="30" 
+                                fill={isPressing ? "#34D399" : "#000"} 
+                                opacity={isPressing ? "0.2" : "0.1"} 
+                                style={{ 
+                                    filter: 'blur(10px)', 
+                                    cursor: 'pointer',
+                                    transition: 'fill 0.5s ease, opacity 0.5s ease',
+                                    userSelect: 'none',
+                                    touchAction: 'none',
+                                    WebkitUserSelect: 'none',
+                                    WebkitTouchCallout: 'none'
+                                }} 
+                                onMouseDown={(e) => { e.preventDefault(); setIsPressing(true); setMusicStarted(true); }}
+                                onContextMenu={(e) => e.preventDefault()}
+                                onTouchStart={(e) => { e.preventDefault(); setIsPressing(true); setMusicStarted(true); }}
+                                onTouchMove={(e) => e.preventDefault()}
+                            />
+                            
+                            {/* Glow Effect */}
+                            {showGlow && (
+                                <defs>
+                                    <radialGradient id="treeGlow" cx="50%" cy="50%" r="50%">
+                                        <stop offset="0%" stopColor="#FEF08A" stopOpacity="0.6" />
+                                        <stop offset="100%" stopColor="#FEF08A" stopOpacity="0" />
+                                    </radialGradient>
+                                </defs>
+                            )}
+                            {showGlow && (
+                                <circle 
+                                    cx="0" cy="-180" 
+                                    r={220 * (0.05 + 0.95 * glowScale)} 
+                                    fill="url(#treeGlow)" 
+                                />
+                            )}
+
+                            {/* The Tree */}
+                            {renderBranch(treeStructureRef.current, 0, 0, 0, growth, 8)}
+                        </svg>
+                    </div>
+
+                    <div className="guidance-area flex flex-col items-center justify-center mt-4 min-h-[100px] sm:min-h-[120px]">
+                        <div key={line1 + line2} className="flex flex-col items-center gap-2 animate-[slowFadeInOut_5s_ease-in-out]">
+                            <p className={`${isInhalePhase ? 'text-emerald-600' : 'text-sky-600'} text-2xl sm:text-3xl font-black tracking-widest whitespace-nowrap transition-colors duration-1000`}>
+                                {line1}
+                            </p>
+                            {line2 && (
+                                <p className="text-slate-600 text-lg sm:text-xl font-bold leading-relaxed px-2 whitespace-nowrap">
+                                    {line2}
+                                </p>
+                            )}
+                        </div>
+                    </div>
                 </div>
             );
         }
