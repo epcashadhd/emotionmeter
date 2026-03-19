@@ -1356,8 +1356,15 @@
                 if (!branch) return null;
                 
                 // Adjust threshold for deeper tree (8 levels)
-                const branchThreshold = (8 - depth) / 8;
-                const localGrowth = Math.max(0, Math.min(1, (currentGrowth - branchThreshold) * 8));
+                // Make trunk and main branches grow faster, leaving more time for leaves
+                const getThreshold = (d) => {
+                    if (d >= 2) return (8 - d) * 0.06; // Depth 8 starts at 0, 7 at 0.06... 2 at 0.36
+                    return 0.45; // Depth 1 (tips) starts at 0.45
+                };
+                
+                const branchThreshold = getThreshold(depth);
+                const growthSpeed = depth > 1 ? 6 : 1.8; // Depth 1 grows much slower for gradual leaf appearance
+                const localGrowth = Math.max(0, Math.min(1, (currentGrowth - branchThreshold) * growthSpeed));
                 
                 if (localGrowth <= 0) return null;
 
@@ -1432,14 +1439,19 @@
                     <div className="body-image-wrapper !max-h-[50vh] !mt-0 !aspect-square">
                         {/* Tree Canvas */}
                         <svg viewBox="-200 -350 400 450" className="w-full h-full drop-shadow-xl overflow-visible">
+                            <defs>
+                                <filter id="shadowBlur" x="-50%" y="-50%" width="200%" height="200%">
+                                    <feGaussianBlur in="SourceGraphic" stdDeviation="10" />
+                                </filter>
+                            </defs>
                             {/* Shadow (Floor) - Now the interaction area */}
                             <ellipse 
                                 key="interaction-shadow"
                                 cx="0" cy="10" rx="140" ry="30" 
                                 fill={isPressing ? "#34D399" : "#000"} 
                                 opacity={isPressing ? "0.2" : "0.1"} 
+                                filter="url(#shadowBlur)"
                                 style={{ 
-                                    filter: 'blur(10px)', 
                                     cursor: 'pointer',
                                     transition: 'fill 0.5s ease, opacity 0.5s ease',
                                     userSelect: 'none',
