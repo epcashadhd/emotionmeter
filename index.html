@@ -226,6 +226,16 @@
                 transform: translate(-50%, -50%);
             }
         }
+        @keyframes breathing {
+            0%, 100% {
+                transform: scale(1);
+                opacity: 0.5;
+            }
+            50% {
+                transform: scale(1.2);
+                opacity: 0.9;
+            }
+        }
     </style>
 </head>
 <body>
@@ -1168,7 +1178,7 @@
 
             useEffect(() => {
                 const audio = new Audio();
-                audio.loop = true;
+                audio.loop = false; // Disable loop to allow music to end naturally
                 audioRef.current = audio;
                 return () => {
                     audio.pause();
@@ -1205,43 +1215,56 @@
                 const stage3Timer = setTimeout(() => setStage(3), 30000);
                 const stage4Timer = setTimeout(() => setStage(4), 40000);
                 
-                // Start gradual fade out when the final stage starts (at 40s)
-                const fadeTimer = setTimeout(() => {
+                const handleTimeUpdate = () => {
                     if (audioRef.current) {
                         const audio = audioRef.current;
-                        const startVolume = 1;
-                        const duration = 20000; // 20 seconds gradual fade
-                        const steps = 100;
-                        const interval = duration / steps;
-                        const volumeStep = startVolume / steps;
-                        let step = 0;
+                        const remainingTime = audio.duration - audio.currentTime;
                         
-                        fadeIntervalRef.current = setInterval(() => {
-                            step++;
-                            if (step >= steps) {
-                                audio.pause();
-                                audio.volume = 1;
-                                setIsPlaying(false);
-                                clearInterval(fadeIntervalRef.current);
-                                fadeIntervalRef.current = null;
-                            } else {
-                                audio.volume = Math.max(0, 1 - (volumeStep * step));
-                            }
-                        }, interval);
+                        // Start fade out when 20 seconds are remaining
+                        if (remainingTime <= 20 && !fadeIntervalRef.current && !audio.paused) {
+                            const startVolume = audio.volume;
+                            const duration = remainingTime * 1000; // Use remaining time for fade duration
+                            const steps = 400;
+                            const interval = duration / steps;
+                            const volumeStep = startVolume / steps;
+                            let step = 0;
+                            
+                            fadeIntervalRef.current = setInterval(() => {
+                                step++;
+                                if (step >= steps) {
+                                    audio.pause();
+                                    audio.volume = 1;
+                                    setIsPlaying(false);
+                                    clearInterval(fadeIntervalRef.current);
+                                    fadeIntervalRef.current = null;
+                                    setSelectedPart(null); // End the session when music ends
+                                } else {
+                                    audio.volume = Math.max(0, startVolume - (volumeStep * step));
+                                }
+                            }, interval);
+                        }
                     }
-                }, 40000);
+                };
 
-                const resetTimer = setTimeout(() => {
+                const handleEnded = () => {
                     setSelectedPart(null);
-                }, 60000);
+                    setIsPlaying(false);
+                };
+
+                if (audioRef.current) {
+                    audioRef.current.addEventListener('timeupdate', handleTimeUpdate);
+                    audioRef.current.addEventListener('ended', handleEnded);
+                }
 
                 return () => {
                     clearTimeout(stage1Timer);
                     clearTimeout(stage2Timer);
                     clearTimeout(stage3Timer);
                     clearTimeout(stage4Timer);
-                    clearTimeout(fadeTimer);
-                    clearTimeout(resetTimer);
+                    if (audioRef.current) {
+                        audioRef.current.removeEventListener('timeupdate', handleTimeUpdate);
+                        audioRef.current.removeEventListener('ended', handleEnded);
+                    }
                 };
             }, [selectedPart]);
 
@@ -1264,44 +1287,44 @@
 
             const BODY_PARTS_TEXT = {
                 head: [
+                    "覺察額頭肌肉現在的高低位置",
+                    "留意光線在眼皮外的變化",
                     "想像頭部像氣球輕輕往上飄",
-                    "感覺眼皮閉上的重量",
-                    "額頭像平滑鏡面一樣展開",
-                    "留意頭後方接觸空氣的感覺",
+                    "感受額頭皮膚向兩旁慢慢舒展",
                     "閉上雙眼，保持平靜，靜候音樂淡出"
                 ],
                 shoulders: [
-                    "察覺肩膀目前的高低位置",
-                    "感覺肩膀隨吐氣下降的幅度",
+                    "覺察肩膀目前的高低位置",
                     "留意衣物接觸皮膚的觸感",
-                    "想像肩膀像冰塊慢慢融化",
+                    "感受肩膀隨著呼氣時慢慢下降",
+                    "想像肩膀像冰塊在陽光下融化",
                     "閉上雙眼，保持平靜，靜候音樂淡出"
                 ],
                 chest: [
-                    "呼吸像海浪平穩拍打岸邊",
-                    "感受每一次吸氣進出的路徑",
-                    "察覺心跳在胸膛跳動的聲音",
-                    "想像胸口撐開一把保護傘",
+                    "感受呼吸像海浪緩緩推向沙灘",
+                    "留意每一次吸氣進出的路徑",
+                    "呼吸像潮汐一樣平穩升起落下",
+                    "想像胸口內部空間變得更寬闊",
                     "閉上雙眼，保持平靜，靜候音樂淡出"
                 ],
                 stomach: [
-                    "感覺肚子隨呼吸向外擴張",
-                    "想像溫暖的陽光停留在中心",
+                    "感受肚子隨呼吸慢慢變大",
                     "留意腹部肌肉收縮的過程",
-                    "察覺呼吸在腹部停留的時間",
+                    "覺察呼吸在肚子停留的時間",
+                    "想像溫暖的陽光停留在中心",
                     "閉上雙眼，保持平靜，靜候音樂淡出"
                 ],
                 hands: [
-                    "雙手像羽毛掉落在膝蓋",
-                    "感覺手掌變得很溫暖",
+                    "感受手掌目前微溫的熱度",
+                    "覺察雙手放在支撐物上的重量",
+                    "雙手像羽毛掉落在身體上方",
                     "留意指縫之間流過的空氣",
-                    "察覺雙手放在桌上的重量",
                     "閉上雙眼，保持平靜，靜候音樂淡出"
                 ],
                 feet: [
+                    "感受腳底踩在地面上的壓力",
+                    "覺察雙腿支撐全身的感覺",
                     "腳掌像大樹根部鑽進泥土",
-                    "感覺腳底踩在地面上的壓力",
-                    "察覺雙腿支撐全身的感覺",
                     "想像地面像地毯支撐著你",
                     "閉上雙眼，保持平靜，靜候音樂淡出"
                 ]
@@ -1352,10 +1375,10 @@
                                         zIndex: 10
                                     }}
                                 >
-                                    {/* Glow effect when selected */}
+                                    {/* Large glow effect when selected */}
                                     {selectedPart?.id === part.id && (
                                         <div 
-                                            className="absolute w-[140px] h-[140px] rounded-full animate-[pulse_1.5s_cubic-bezier(0.4,0,0.6,1)_infinite] pointer-events-none"
+                                            className="absolute w-[140px] h-[140px] rounded-full animate-[breathing_4s_ease-in-out_infinite] pointer-events-none"
                                             style={{ 
                                                 background: 'radial-gradient(circle, rgba(254, 240, 138, 0.9) 0%, rgba(253, 224, 71, 0.4) 40%, transparent 75%)',
                                                 boxShadow: '0 0 30px rgba(253, 224, 71, 0.3)'
