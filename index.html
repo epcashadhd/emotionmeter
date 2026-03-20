@@ -1211,35 +1211,61 @@
                     let numBranches = 0;
                     if (depth > 1) {
                         const rand = Math.random();
-                        if (depth > 6) {
-                            // Main trunk/major branches: usually 2, sometimes 3
-                            numBranches = rand > 0.1 ? 2 : 3;
+                        if (depth === 8) {
+                            // First split: at least 3 branches
+                            numBranches = 3;
+                        } else if (depth === 7) {
+                            // Layer two: add 2 more thinner branches as requested (total 4-5)
+                            numBranches = rand > 0.5 ? 4 : 5;
+                        } else if (depth > 6) {
+                            // Major branches: 2 or 3
+                            numBranches = rand > 0.3 ? 2 : 3;
                         } else if (depth > 3) {
-                            // Middle branches: more likely to split into 3 for density
+                            // Middle branches: 2 or 3
                             numBranches = rand > 0.4 ? 3 : 2;
                         } else {
-                            // Tips: split into 2 or 3 for more "thin sticks"
+                            // Tips: 2 or 3
                             numBranches = rand > 0.3 ? 2 : 3;
                         }
                     }
                     
                     for (let i = 0; i < numBranches; i++) {
+                        // 90% layer grows upward: tighten spread and angle constraints
                         // More varied spread and angles
-                        const spread = 30 + Math.random() * 45;
+                        let spread = 20 + Math.random() * 30; // Reduced spread for more upward growth
+                        
+                        // For most levels, keep them even more upright (90% upward)
+                        if (depth >= 2) {
+                            spread = 15 + Math.random() * 25;
+                        }
+
                         let angleOffset = 0;
                         if (numBranches === 1) {
-                            angleOffset = Math.random() * 30 - 15;
+                            angleOffset = Math.random() * 20 - 10;
                         } else if (numBranches === 2) {
-                            angleOffset = (i === 0 ? -spread/2 : spread/2) + (Math.random() * 20 - 10);
+                            angleOffset = (i === 0 ? -spread/2 : spread/2) + (Math.random() * 15 - 7.5);
                         } else {
-                            angleOffset = (i === 0 ? -spread/2 : (i === 1 ? 0 : spread/2)) + (Math.random() * 20 - 10);
+                            // Distribute branches across the spread
+                            const step = spread / (numBranches - 1);
+                            angleOffset = (-spread/2 + i * step) + (Math.random() * 10 - 5);
                         }
                         
-                        const newAngle = angle + angleOffset;
+                        let newAngle = angle + angleOffset;
+                        
+                        // Constrain angles strictly for 90% upward growth
+                        if (depth >= 2) {
+                            newAngle = Math.max(-45, Math.min(45, newAngle));
+                        }
                         // More varied length for organic feel
-                        const newLength = length * (0.68 + Math.random() * 0.25);
-                        const nextCurve = (Math.random() * 30 - 15);
-                        const thicknessScale = 0.7 + Math.random() * 0.6; // Varied thickness
+                        const newLength = length * (0.65 + Math.random() * 0.25);
+                        const nextCurve = (Math.random() * 20 - 10);
+                        
+                        // Thinner branches for the extra ones in layer two (depth 7)
+                        let thicknessScale = 0.7 + Math.random() * 0.6;
+                        if (depth === 7 && i >= 3) {
+                            thicknessScale *= 0.6; // Make extra branches thinner
+                        }
+                        
                         branches.push(generateTree(depth - 1, newAngle, newLength, nextCurve, thicknessScale));
                     }
                     return { angle, length, branches, curve, thicknessScale: arguments[4] || 1, id: Math.random() };
@@ -1334,8 +1360,9 @@
 
                         // Grow whenever pressing
                         if (isPressing) {
-                            // Grow 96s of total pressing time to full (1.0) to match the music duration (1m 36s)
-                            growthRef.current = Math.min(1, growthRef.current + delta / 96000);
+                            // Grow 80s of total pressing time to full (1.0)
+                            // The practice is 96s total, so the last 16s are for enjoying the tree
+                            growthRef.current = Math.min(1, growthRef.current + delta / 80000);
                             setGrowth(growthRef.current);
                             if (growthRef.current >= 1) {
                                 setIsComplete(true);
@@ -1387,7 +1414,7 @@
                         />
                         {branch.branches.map(b => renderBranch(b, endX, endY, currentAngle + branch.angle, currentGrowth, depth - 1))}
                         
-                        {/* More leaves at the tips for a dense style */}
+                        {/* Leaves at the tips - optimized for performance by reducing circle count slightly */}
                         {depth <= 4 && (
                             <g opacity={Math.max(0, Math.min(1, (localGrowth - 0.2) * 1.25))}>
                                 <circle cx={endX} cy={endY} r={depth === 1 ? 6 : 4} fill={depth === 1 ? "#A5D6A7" : "#81C784"} opacity="0.6" />
@@ -1397,12 +1424,9 @@
                                         <circle cx={endX - 5} cy={endY + 3} r="3.5" fill="#81C784" opacity="0.5" />
                                         <circle cx={endX + 3} cy={endY + 5} r="2.5" fill="#66BB6A" opacity="0.4" />
                                         <circle cx={endX - 3} cy={endY - 5} r="2.8" fill="#4CAF50" opacity="0.4" />
+                                        {/* Reduced extra circles for performance while keeping density */}
                                         <circle cx={endX + 7} cy={endY} r="2.2" fill="#A5D6A7" opacity="0.4" />
                                         <circle cx={endX - 7} cy={endY} r="2.2" fill="#81C784" opacity="0.4" />
-                                        <circle cx={endX + 4} cy={endY + 8} r="2" fill="#A5D6A7" opacity="0.3" />
-                                        <circle cx={endX - 4} cy={endY - 8} r="2" fill="#81C784" opacity="0.3" />
-                                        <circle cx={endX + 9} cy={endY - 2} r="1.8" fill="#C8E6C9" opacity="0.3" />
-                                        <circle cx={endX - 9} cy={endY + 2} r="1.8" fill="#66BB6A" opacity="0.3" />
                                     </>
                                 )}
                                 {depth === 1 && (
@@ -1410,8 +1434,6 @@
                                         <circle cx={endX + 8} cy={endY + 2} r="2.5" fill="#A5D6A7" opacity="0.5" />
                                         <circle cx={endX - 8} cy={endY - 2} r="3" fill="#C8E6C9" opacity="0.5" />
                                         <circle cx={endX} cy={endY - 8} r="2.5" fill="#E8F5E9" opacity="0.4" />
-                                        <circle cx={endX + 2} cy={endY - 10} r="2" fill="#A5D6A7" opacity="0.3" />
-                                        <circle cx={endX - 2} cy={endY + 10} r="2" fill="#81C784" opacity="0.3" />
                                     </>
                                 )}
                             </g>
@@ -1485,6 +1507,16 @@
                             {/* The Tree */}
                             {renderBranch(treeStructureRef.current, 0, 0, 0, growth, 8)}
                         </svg>
+
+                        {/* Timeline / Progress Bar */}
+                        {musicStarted && (
+                            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 w-48 h-1 bg-slate-200/50 rounded-full overflow-hidden backdrop-blur-sm">
+                                <div 
+                                    className="h-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.5)]"
+                                    style={{ width: `${growth * 100}%` }}
+                                />
+                            </div>
+                        )}
                     </div>
 
                     <div className="guidance-area flex flex-col items-center justify-center mt-4 min-h-[100px] sm:min-h-[120px]">
