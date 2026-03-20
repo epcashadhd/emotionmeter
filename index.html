@@ -1200,6 +1200,7 @@
             const treeStructureRef = useRef(null);
             const cycleRef = useRef(0);
             const fadeIntervalRef = useRef(null);
+            const canvasRef = useRef(null);
 
             // Generate tree structure once
             if (!treeStructureRef.current) {
@@ -1348,6 +1349,90 @@
 
             useEffect(() => {
                 let frame;
+                const drawBranch = (ctx, branch, x, y, currentAngle, currentGrowth, depth, currentSway) => {
+                    if (!branch) return;
+                    
+                    const getThreshold = (d) => {
+                        if (d >= 2) return (8 - d) * 0.06;
+                        return 0.45;
+                    };
+                    
+                    const branchThreshold = getThreshold(depth);
+                    const growthSpeed = depth > 1 ? 6 : 1.8;
+                    const localGrowth = Math.max(0, Math.min(1, (currentGrowth - branchThreshold) * growthSpeed));
+                    
+                    if (localGrowth <= 0) return;
+
+                    const angleOffset = depth < 6 ? currentSway * (6 - depth) * 0.5 : 0;
+                    const angleRad = (currentAngle + branch.angle + angleOffset) * Math.PI / 180;
+                    const endX = x + branch.length * Math.sin(angleRad) * localGrowth;
+                    const endY = y - branch.length * Math.cos(angleRad) * localGrowth;
+
+                    const midX = x + (endX - x) / 2 + Math.cos(angleRad + Math.PI/2) * (branch.curve || 0) * localGrowth;
+                    const midY = y + (endY - y) / 2 + Math.sin(angleRad + Math.PI/2) * (branch.curve || 0) * localGrowth;
+
+                    // Draw Branch
+                    ctx.beginPath();
+                    ctx.moveTo(x, y);
+                    ctx.quadraticCurveTo(midX, midY, endX, endY);
+                    ctx.strokeStyle = depth > 4 ? "#3E2723" : (depth > 2 ? "#2E7D32" : "#4CAF50");
+                    ctx.lineWidth = (depth * 0.8 + 0.5) * (branch.thicknessScale || 1);
+                    ctx.lineCap = "round";
+                    ctx.stroke();
+
+                    // Draw Children
+                    branch.branches.forEach(b => drawBranch(ctx, b, endX, endY, currentAngle + branch.angle, currentGrowth, depth - 1, currentSway));
+                    
+                    // Draw Leaves
+                    if (depth <= 4) {
+                        const leafOpacity = Math.max(0, Math.min(1, (localGrowth - 0.2) * 1.25));
+                        if (leafOpacity > 0) {
+                            ctx.save();
+                            ctx.globalAlpha = leafOpacity * 0.6;
+                            ctx.fillStyle = depth === 1 ? "#A5D6A7" : "#81C784";
+                            ctx.beginPath();
+                            ctx.arc(endX, endY, depth === 1 ? 6 : 4, 0, Math.PI * 2);
+                            ctx.fill();
+                            
+                            if (depth <= 2) {
+                                ctx.globalAlpha = leafOpacity * 0.5;
+                                ctx.fillStyle = "#C8E6C9";
+                                ctx.beginPath(); ctx.arc(endX + 5, endY - 4, 3, 0, Math.PI * 2); ctx.fill();
+                                
+                                ctx.fillStyle = "#81C784";
+                                ctx.beginPath(); ctx.arc(endX - 5, endY + 3, 3.5, 0, Math.PI * 2); ctx.fill();
+                                
+                                ctx.globalAlpha = leafOpacity * 0.4;
+                                ctx.fillStyle = "#66BB6A";
+                                ctx.beginPath(); ctx.arc(endX + 3, endY + 5, 2.5, 0, Math.PI * 2); ctx.fill();
+                                
+                                ctx.fillStyle = "#4CAF50";
+                                ctx.beginPath(); ctx.arc(endX - 3, endY - 5, 2.8, 0, Math.PI * 2); ctx.fill();
+                                
+                                ctx.fillStyle = "#A5D6A7";
+                                ctx.beginPath(); ctx.arc(endX + 7, endY, 2.2, 0, Math.PI * 2); ctx.fill();
+                                
+                                ctx.fillStyle = "#81C784";
+                                ctx.beginPath(); ctx.arc(endX - 7, endY, 2.2, 0, Math.PI * 2); ctx.fill();
+                            }
+                            
+                            if (depth === 1) {
+                                ctx.globalAlpha = leafOpacity * 0.5;
+                                ctx.fillStyle = "#A5D6A7";
+                                ctx.beginPath(); ctx.arc(endX + 8, endY + 2, 2.5, 0, Math.PI * 2); ctx.fill();
+                                
+                                ctx.fillStyle = "#C8E6C9";
+                                ctx.beginPath(); ctx.arc(endX - 8, endY - 2, 3, 0, Math.PI * 2); ctx.fill();
+                                
+                                ctx.globalAlpha = leafOpacity * 0.4;
+                                ctx.fillStyle = "#E8F5E9";
+                                ctx.beginPath(); ctx.arc(endX, endY - 8, 2.5, 0, Math.PI * 2); ctx.fill();
+                            }
+                            ctx.restore();
+                        }
+                    }
+                };
+
                 const animate = (time) => {
                     if (!lastTimeRef.current) lastTimeRef.current = time;
                     const delta = time - lastTimeRef.current;
@@ -1361,7 +1446,6 @@
                         // Grow whenever pressing
                         if (isPressing) {
                             // Grow 80s of total pressing time to full (1.0)
-                            // The practice is 96s total, so the last 16s are for enjoying the tree
                             growthRef.current = Math.min(1, growthRef.current + delta / 80000);
                             setGrowth(growthRef.current);
                             if (growthRef.current >= 1) {
@@ -1371,76 +1455,41 @@
                     }
 
                     // Sway animation
-                    setSway(Math.sin(time / 1000) * 2);
+                    const currentSway = Math.sin(time / 1500) * 2; // Slower sway
+                    // Canvas Drawing
+                    const canvas = canvasRef.current;
+                    if (canvas) {
+                        const ctx = canvas.getContext('2d');
+                        const rect = canvas.getBoundingClientRect();
+                        
+                        // Match resolution to display size for sharpness
+                        const dpr = window.devicePixelRatio || 1;
+                        if (canvas.width !== rect.width * dpr || canvas.height !== rect.height * dpr) {
+                            canvas.width = rect.width * dpr;
+                            canvas.height = rect.height * dpr;
+                        }
+                        
+                        ctx.clearRect(0, 0, canvas.width, canvas.height);
+                        ctx.save();
+                        ctx.scale(dpr, dpr);
+                        
+                        // Map SVG coordinate system to Canvas
+                        // SVG: viewBox="-200 -450 400 500"
+                        const scale = rect.width / 400;
+                        ctx.translate(rect.width / 2, rect.height * (450 / 500));
+                        ctx.scale(scale, scale);
+                        
+                        if (treeStructureRef.current) {
+                            drawBranch(ctx, treeStructureRef.current, 0, 0, 0, growthRef.current, 8, currentSway);
+                        }
+                        ctx.restore();
+                    }
 
                     frame = requestAnimationFrame(animate);
                 };
                 frame = requestAnimationFrame(animate);
                 return () => cancelAnimationFrame(frame);
             }, [isPressing, isComplete, musicStarted]);
-
-            const renderBranch = (branch, x, y, currentAngle, currentGrowth, depth) => {
-                if (!branch) return null;
-                
-                // Adjust threshold for deeper tree (8 levels)
-                // Make trunk and main branches grow faster, leaving more time for leaves
-                const getThreshold = (d) => {
-                    if (d >= 2) return (8 - d) * 0.06; // Depth 8 starts at 0, 7 at 0.06... 2 at 0.36
-                    return 0.45; // Depth 1 (tips) starts at 0.45
-                };
-                
-                const branchThreshold = getThreshold(depth);
-                const growthSpeed = depth > 1 ? 6 : 1.8; // Depth 1 grows much slower for gradual leaf appearance
-                const localGrowth = Math.max(0, Math.min(1, (currentGrowth - branchThreshold) * growthSpeed));
-                
-                if (localGrowth <= 0) return null;
-
-                const angleRad = (currentAngle + branch.angle + (depth < 6 ? sway * (6 - depth) * 0.5 : 0)) * Math.PI / 180;
-                const endX = x + branch.length * Math.sin(angleRad) * localGrowth;
-                const endY = y - branch.length * Math.cos(angleRad) * localGrowth;
-
-                // Control point for quadratic curve to make it look organic
-                const midX = x + (endX - x) / 2 + Math.cos(angleRad + Math.PI/2) * (branch.curve || 0) * localGrowth;
-                const midY = y + (endY - y) / 2 + Math.sin(angleRad + Math.PI/2) * (branch.curve || 0) * localGrowth;
-
-                return (
-                    <g key={branch.id}>
-                        <path 
-                            d={`M ${x} ${y} Q ${midX} ${midY} ${endX} ${endY}`}
-                            stroke={depth > 4 ? "#3E2723" : (depth > 2 ? "#2E7D32" : "#4CAF50")} 
-                            strokeWidth={(depth * 0.8 + 0.5) * (branch.thicknessScale || 1)} 
-                            fill="none"
-                            strokeLinecap="round"
-                        />
-                        {branch.branches.map(b => renderBranch(b, endX, endY, currentAngle + branch.angle, currentGrowth, depth - 1))}
-                        
-                        {/* Leaves at the tips - optimized for performance by reducing circle count slightly */}
-                        {depth <= 4 && (
-                            <g opacity={Math.max(0, Math.min(1, (localGrowth - 0.2) * 1.25))}>
-                                <circle cx={endX} cy={endY} r={depth === 1 ? 6 : 4} fill={depth === 1 ? "#A5D6A7" : "#81C784"} opacity="0.6" />
-                                {depth <= 2 && (
-                                    <>
-                                        <circle cx={endX + 5} cy={endY - 4} r="3" fill="#C8E6C9" opacity="0.5" />
-                                        <circle cx={endX - 5} cy={endY + 3} r="3.5" fill="#81C784" opacity="0.5" />
-                                        <circle cx={endX + 3} cy={endY + 5} r="2.5" fill="#66BB6A" opacity="0.4" />
-                                        <circle cx={endX - 3} cy={endY - 5} r="2.8" fill="#4CAF50" opacity="0.4" />
-                                        {/* Reduced extra circles for performance while keeping density */}
-                                        <circle cx={endX + 7} cy={endY} r="2.2" fill="#A5D6A7" opacity="0.4" />
-                                        <circle cx={endX - 7} cy={endY} r="2.2" fill="#81C784" opacity="0.4" />
-                                    </>
-                                )}
-                                {depth === 1 && (
-                                    <>
-                                        <circle cx={endX + 8} cy={endY + 2} r="2.5" fill="#A5D6A7" opacity="0.5" />
-                                        <circle cx={endX - 8} cy={endY - 2} r="3" fill="#C8E6C9" opacity="0.5" />
-                                        <circle cx={endX} cy={endY - 8} r="2.5" fill="#E8F5E9" opacity="0.4" />
-                                    </>
-                                )}
-                            </g>
-                        )}
-                    </g>
-                );
-            };
 
             const isInhalePhase = cycleTime < 5;
             const glowScale = musicStarted && !isComplete ? (isInhalePhase ? (cycleTime / 5) : (1 - (cycleTime - 5) / 5)) : 0;
@@ -1458,9 +1507,14 @@
 
             return (
                 <div className="body-scan-container animate-[gentleFadeIn_0.8s_ease-in-out]">
-                    <div className="body-image-wrapper !max-h-[50vh] !mt-0 !aspect-square">
+                    <div className="body-image-wrapper !max-h-[60vh] !mt-0 !aspect-[4/5] relative">
                         {/* Tree Canvas */}
-                        <svg viewBox="-200 -350 400 450" className="w-full h-full drop-shadow-xl overflow-visible">
+                        <canvas 
+                            ref={canvasRef}
+                            className="absolute inset-0 w-full h-full drop-shadow-xl pointer-events-none"
+                            style={{ zIndex: 1 }}
+                        />
+                        <svg viewBox="-200 -450 400 500" className="w-full h-full overflow-visible relative" style={{ zIndex: 2 }}>
                             <defs>
                                 <filter id="shadowBlur" x="-50%" y="-50%" width="200%" height="200%">
                                     <feGaussianBlur in="SourceGraphic" stdDeviation="10" />
@@ -1469,7 +1523,7 @@
                             {/* Shadow (Floor) - Now the interaction area */}
                             <ellipse 
                                 key="interaction-shadow"
-                                cx="0" cy="10" rx="140" ry="30" 
+                                cx="0" cy="20" rx="140" ry="30" 
                                 fill={isPressing ? "#34D399" : "#000"} 
                                 opacity={isPressing ? "0.2" : "0.1"} 
                                 filter="url(#shadowBlur)"
@@ -1498,19 +1552,16 @@
                             )}
                             {showGlow && (
                                 <circle 
-                                    cx="0" cy="-180" 
-                                    r={220 * (0.05 + 0.95 * glowScale)} 
+                                    cx="0" cy="-200" 
+                                    r={250 * (0.05 + 0.95 * glowScale)} 
                                     fill="url(#treeGlow)" 
                                 />
                             )}
-
-                            {/* The Tree */}
-                            {renderBranch(treeStructureRef.current, 0, 0, 0, growth, 8)}
                         </svg>
 
                         {/* Timeline / Progress Bar */}
                         {musicStarted && (
-                            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 w-48 h-1 bg-slate-200/50 rounded-full overflow-hidden backdrop-blur-sm">
+                            <div className="absolute bottom-2 left-1/2 -translate-x-1/2 w-48 h-1 bg-slate-200/50 rounded-full overflow-hidden backdrop-blur-sm">
                                 <div 
                                     className="h-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.5)]"
                                     style={{ width: `${growth * 100}%` }}
