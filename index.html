@@ -1204,7 +1204,7 @@
 
             // Generate tree structure once
             if (!treeStructureRef.current) {
-                const generateTree = (depth, angle, length, curve = 0) => {
+                const generateTree = (depth, angle, length, curve = 0, thicknessScale = 1) => {
                     if (depth === 0) return null;
                     const branches = [];
                     
@@ -1213,32 +1213,24 @@
                     if (depth > 1) {
                         const rand = Math.random();
                         if (depth === 8) {
-                            // First split: at least 3 branches
-                            numBranches = 3;
+                            // 第一層分出 4 根主枝
+                            numBranches = 4;
                         } else if (depth === 7) {
-                            // Layer two: add 2 more thinner branches as requested (total 4-5)
-                            numBranches = rand > 0.5 ? 4 : 5;
+                            // 第二層分枝數量
+                            numBranches = rand > 0.5 ? 3 : 4;
                         } else if (depth > 6) {
-                            // Major branches: 2 or 3
                             numBranches = rand > 0.3 ? 2 : 3;
                         } else if (depth > 3) {
-                            // Middle branches: 2 or 3
                             numBranches = rand > 0.4 ? 3 : 2;
                         } else {
-                            // Tips: 2 or 3
                             numBranches = rand > 0.3 ? 2 : 3;
                         }
                     }
                     
                     for (let i = 0; i < numBranches; i++) {
                         // 90% layer grows upward: tighten spread and angle constraints
-                        // More varied spread and angles
-                        let spread = 20 + Math.random() * 30; // Reduced spread for more upward growth
-                        
-                        // For most levels, keep them even more upright (90% upward)
-                        if (depth >= 2) {
-                            spread = 15 + Math.random() * 25;
-                        }
+                        let spread = 20 + Math.random() * 30;
+                        if (depth >= 2) spread = 15 + Math.random() * 25;
 
                         let angleOffset = 0;
                         if (numBranches === 1) {
@@ -1246,33 +1238,61 @@
                         } else if (numBranches === 2) {
                             angleOffset = (i === 0 ? -spread/2 : spread/2) + (Math.random() * 15 - 7.5);
                         } else {
-                            // Distribute branches across the spread
                             const step = spread / (numBranches - 1);
                             angleOffset = (-spread/2 + i * step) + (Math.random() * 10 - 5);
                         }
                         
                         let newAngle = angle + angleOffset;
+                        if (depth >= 2) newAngle = Math.max(-45, Math.min(45, newAngle));
+
+                        let lengthScale = 0.65 + Math.random() * 0.25;
+                        if (depth === 8) lengthScale = 0.45 + Math.random() * 0.15;
+                        const newLength = length * lengthScale;
                         
-                        // Constrain angles strictly for 90% upward growth
-                        if (depth >= 2) {
-                            newAngle = Math.max(-45, Math.min(45, newAngle));
+                        const nextCurve = (Math.random() * 16 - 8);
+                        
+                        let nextThicknessScale = 0.7 + Math.random() * 0.6;
+                        let staggerOffset = 1.0; // 預設從頂端長出
+
+                        if (depth === 8) {
+                            nextThicknessScale = 1.6;
+                            // 讓分枝從樹幹更低的位置冒出 (60% ~ 88%)，增加重疊感
+                            staggerOffset = 0.6 + (i * 0.07); 
+                        } else if (depth === 7 && i >= 3) {
+                            nextThicknessScale *= 0.6;
                         }
-                        // More varied length for organic feel
-                        const newLength = length * (0.65 + Math.random() * 0.25);
-                        const nextCurve = (Math.random() * 20 - 10);
                         
-                        // Thinner branches for the extra ones in layer two (depth 7)
-                        let thicknessScale = 0.7 + Math.random() * 0.6;
-                        if (depth === 7 && i >= 3) {
-                            thicknessScale *= 0.6; // Make extra branches thinner
-                        }
-                        
-                        branches.push(generateTree(depth - 1, newAngle, newLength, nextCurve, thicknessScale));
+                        branches.push({
+                            ...generateTree(depth - 1, newAngle, newLength, nextCurve, nextThicknessScale),
+                            staggerOffset
+                        });
                     }
-                    return { angle, length, branches, curve, thicknessScale: arguments[4] || 1, id: Math.random() };
+
+                    const result = { angle, length, branches, curve, thicknessScale, id: Math.random() };
+
+                    // 為樹幹 (depth 8) 預先計算根部與鋸齒數據，防止生長時抖動
+                    if (depth === 8) {
+                        const numRoots = 7 + Math.floor(Math.random() * 3);
+                        const roots = [];
+                        for (let r = 0; r < numRoots; r++) {
+                            const rt = r / (numRoots - 1);
+                            const rAngle = (rt < 0.5 ? -30 - Math.random() * 40 : 30 + Math.random() * 40);
+                            const rLen = (12 + Math.random() * 18);
+                            const subAngle = rAngle + (Math.random() * 50 - 25);
+                            const subLen = rLen * (0.5 + Math.random() * 0.3);
+                            roots.push({ rt, rAngle, rLen, subAngle, subLen });
+                        }
+                        result.roots = roots;
+                        result.topNoise = Array.from({ length: 6 }, () => Math.random() * 3 - 1.5);
+                        result.bottomNoise = Math.random() * 2.5;
+                    }
+
+                    return result;
                 };
                 // Increase depth to 8 for more detail and density
-                treeStructureRef.current = generateTree(8, 0, 70, 0);
+                // 根據螢幕寬度動態調整起始長度，手機與平板版調大，桌面版維持 60 以防頂部遮擋
+                const initialLength = window.innerWidth < 640 ? 85 : (window.innerWidth < 1024 ? 75 : 60);
+                treeStructureRef.current = generateTree(8, 0, initialLength, 0);
             }
 
             useEffect(() => {
@@ -1352,12 +1372,17 @@
                 const drawBranch = (ctx, branch, x, y, currentAngle, currentGrowth, depth, currentSway) => {
                     if (!branch) return;
                     
-                    const getThreshold = (d) => {
-                        if (d >= 2) return (8 - d) * 0.06;
-                        return 0.45;
+                    const getThreshold = (d, sOffset) => {
+                        if (d === 8) return 0;
+                        // 如果有錯位偏移，根據偏移量動態計算啟動時間
+                        // 確保分枝在樹幹長到該位置時準時冒出
+                        if (d === 7 && sOffset) return sOffset * 0.16; 
+                        if (d === 7) return 0.14;
+                        if (d >= 2) return 0.14 + (7 - d) * 0.08;
+                        return 0.55;
                     };
                     
-                    const branchThreshold = getThreshold(depth);
+                    const branchThreshold = getThreshold(depth, branch.staggerOffset);
                     const growthSpeed = depth > 1 ? 6 : 1.8;
                     const localGrowth = Math.max(0, Math.min(1, (currentGrowth - branchThreshold) * growthSpeed));
                     
@@ -1373,15 +1398,196 @@
 
                     // Draw Branch
                     ctx.beginPath();
-                    ctx.moveTo(x, y);
-                    ctx.quadraticCurveTo(midX, midY, endX, endY);
-                    ctx.strokeStyle = depth > 4 ? "#3E2723" : (depth > 2 ? "#2E7D32" : "#4CAF50");
-                    ctx.lineWidth = (depth * 0.8 + 0.5) * (branch.thicknessScale || 1);
+                    
+                    // Dynamic Thickening: 隨生長進度平滑增加粗度
+                    // 調整基礎厚度，確保銜接處足夠粗壯
+                    const nextLayerWidth = (7 * 0.8 + 0.5) * 1.6; // 匹配加厚後的第二層
+                    const trunkBaseWidth = (8 * 0.8 + 0.5) * 2.2;
+                    
+                    const baseWidth = (depth * 0.8 + 0.5) * (branch.thicknessScale || 1);
+                    const growthFactor = 0.5 + 0.5 * localGrowth;
+                    ctx.lineWidth = baseWidth * growthFactor;
+                    
                     ctx.lineCap = "round";
-                    ctx.stroke();
+                    ctx.strokeStyle = depth > 4 ? "#3E2723" : (depth > 2 ? "#2E7D32" : "#4CAF50");
+
+                    if (depth === 8) {
+                        // 為第一層樹幹實現平滑的手繪形狀
+                        const segments = 30; // 增加片段以提高平滑度
+                        const leftPoints = [];
+                        const rightPoints = [];
+                        
+                        // 預先計算完整路徑參數以實現平滑生長
+                        const fullAngleRad = (currentAngle + branch.angle) * Math.PI / 180;
+                        const fullEndX = x + branch.length * Math.sin(fullAngleRad);
+                        const fullEndY = y - branch.length * Math.cos(fullAngleRad);
+                        const fullMidX = x + (fullEndX - x) / 2 + Math.cos(fullAngleRad + Math.PI/2) * (branch.curve || 0);
+                        const fullMidY = y + (fullEndY - y) / 2 + Math.sin(fullAngleRad + Math.PI/2) * (branch.curve || 0);
+
+                        for (let i = 0; i <= segments; i++) {
+                            // 使用 localGrowth 作為上限，並均勻分佈片段，實現平滑生長
+                            const t = (i / segments) * localGrowth;
+                            
+                            // 計算中心路徑
+                            const tx = (1 - t) * (1 - t) * x + 2 * (1 - t) * t * fullMidX + t * t * fullEndX;
+                            const ty = (1 - t) * (1 - t) * y + 2 * (1 - t) * t * fullMidY + t * t * fullEndY;
+                            
+                            // 底部擴張 (Flare)：底部較寬，頂部精確收縮到與下一層分枝一致
+                            const currentTaperWidth = trunkBaseWidth * (1 - t) + nextLayerWidth * t;
+                            const flare = (1 - t) * (1 - t) * 15;
+                            const currentHalfWidth = (currentTaperWidth / 2) * growthFactor + flare;
+                            
+                            const noiseL = Math.sin(branch.id * 1000 + i * 0.8) * 0.5;
+                            const noiseR = Math.cos(branch.id * 500 + i * 0.8) * 0.5;
+                            
+                            leftPoints.push({ x: tx - currentHalfWidth + noiseL, y: ty });
+                            rightPoints.push({ x: tx + currentHalfWidth + noiseR, y: ty });
+                        }
+                        
+                        if (leftPoints.length > 1) {
+                            ctx.beginPath();
+                            // 底部表面：使用預設噪點，消除抖動
+                            ctx.moveTo(leftPoints[0].x, leftPoints[0].y);
+                            const bottomMidX = (leftPoints[0].x + rightPoints[0].x) / 2;
+                            const bottomMidY = (leftPoints[0].y + rightPoints[0].y) / 2 + (branch.bottomNoise || 0) * localGrowth;
+                            ctx.quadraticCurveTo(bottomMidX, bottomMidY, rightPoints[0].x, rightPoints[0].y);
+                            
+                            // 右側邊緣
+                            for (let i = 1; i < rightPoints.length; i++) ctx.lineTo(rightPoints[i].x, rightPoints[i].y);
+                            
+                            // 頂部表面：使用預設噪點，且生長初期就可見
+                            const topR = rightPoints[rightPoints.length - 1];
+                            const topL = leftPoints[leftPoints.length - 1];
+                            const steps = 5;
+                            for (let j = 1; j <= steps; j++) {
+                                const jt = j / steps;
+                                const jx = topR.x * (1 - jt) + topL.x * jt;
+                                // 噪點隨生長進度縮放
+                                const noise = (branch.topNoise ? branch.topNoise[j] : 0) * localGrowth;
+                                const jy = topR.y * (1 - jt) + topL.y * jt + noise;
+                                ctx.lineTo(jx, jy);
+                            }
+
+                            // 左側邊緣
+                            for (let i = leftPoints.length - 2; i >= 0; i--) ctx.lineTo(leftPoints[i].x, leftPoints[i].y);
+                            ctx.closePath();
+                            
+                            ctx.fillStyle = "#3E2723";
+                            ctx.fill();
+                            
+                            ctx.strokeStyle = "#1A0F0D";
+                            ctx.lineWidth = 1;
+                            ctx.stroke();
+                            
+                            // 根部細節：使用預先計算的數據，消除抖動
+                            if (localGrowth > 0.05 && branch.roots) {
+                                const rootG = Math.min(1, (localGrowth - 0.05) * 3);
+                                ctx.strokeStyle = "#1A0F0D";
+                                
+                                branch.roots.forEach(root => {
+                                    // 起點 (在底部邊緣)
+                                    const rx = leftPoints[0].x * (1 - root.rt) + rightPoints[0].x * root.rt;
+                                    const ry = leftPoints[0].y * (1 - root.rt) + rightPoints[0].y * root.rt;
+                                    
+                                    const rLen = root.rLen * rootG;
+                                    const rAngleRad = root.rAngle * Math.PI / 180;
+                                    const rex = rx + rLen * Math.sin(rAngleRad);
+                                    const rey = ry + rLen * Math.cos(rAngleRad);
+                                    
+                                    // 繪製主根，帶有收縮效果
+                                    const rootSegments = 6;
+                                    let lastRx = rx;
+                                    let lastRy = ry;
+                                    for (let i = 1; i <= rootSegments; i++) {
+                                        const t = i / rootSegments;
+                                        const currX = rx + (rex - rx) * t;
+                                        const currY = ry + (rey - ry) * t;
+                                        
+                                        // 基部較厚 (2.5)，末端較細 (0.5)
+                                        const taper = 2.5 * (1 - t * 0.8);
+                                        ctx.lineWidth = taper * growthFactor;
+                                        
+                                        ctx.beginPath();
+                                        ctx.moveTo(lastRx, lastRy);
+                                        ctx.lineTo(currX, currY);
+                                        ctx.stroke();
+                                        
+                                        lastRx = currX;
+                                        lastRy = currY;
+                                    }
+                                    
+                                    // 根部二級分支
+                                    if (rootG > 0.5) {
+                                        const subG = (rootG - 0.5) * 2;
+                                        const subLen = root.subLen * subG;
+                                        const subAngleRad = root.subAngle * Math.PI / 180;
+                                        
+                                        // 從主根中間分叉
+                                        const rmx = rx + (rex - rx) * 0.6;
+                                        const rmy = ry + (rey - ry) * 0.6;
+                                        
+                                        ctx.lineWidth = 0.8 * growthFactor;
+                                        ctx.beginPath();
+                                        ctx.moveTo(rmx, rmy);
+                                        ctx.lineTo(rmx + subLen * Math.sin(subAngleRad), rmy + subLen * Math.cos(subAngleRad));
+                                        ctx.stroke();
+                                    }
+                                });
+                            }
+                        }
+                    } else {
+                        // 普通樹枝繪製：僅在末端分枝（無子代或深度極低）時進行尖端收縮
+                        // 這樣可以確保層與層之間的銜接處厚度一致，看起來更自然
+                        const hasChildren = branch.branches && branch.branches.length > 0;
+                        const shouldTaper = !hasChildren || depth <= 2;
+
+                        if (shouldTaper) {
+                            const branchSegments = 8;
+                            let lastX = x;
+                            let lastY = y;
+                            
+                            for (let i = 1; i <= branchSegments; i++) {
+                                const t = i / branchSegments;
+                                const tx = (1 - t) * (1 - t) * x + 2 * (1 - t) * t * midX + t * t * endX;
+                                const ty = (1 - t) * (1 - t) * y + 2 * (1 - t) * t * midY + t * t * endY;
+                                
+                                // 寬度從 baseWidth 漸變到末端
+                                const taper = 1 - (t * 0.85); 
+                                ctx.lineWidth = Math.max(0.6, baseWidth * taper * growthFactor);
+                                
+                                ctx.beginPath();
+                                ctx.moveTo(lastX, lastY);
+                                ctx.lineTo(tx, ty);
+                                ctx.stroke();
+                                
+                                lastX = tx;
+                                lastY = ty;
+                            }
+                        } else {
+                            // 中間分枝：不收縮，保持厚度以連接下一層
+                            ctx.lineWidth = baseWidth * growthFactor;
+                            ctx.beginPath();
+                            ctx.moveTo(x, y);
+                            ctx.quadraticCurveTo(midX, midY, endX, endY);
+                            ctx.stroke();
+                        }
+                    }
 
                     // Draw Children
-                    branch.branches.forEach(b => drawBranch(ctx, b, endX, endY, currentAngle + branch.angle, currentGrowth, depth - 1, currentSway));
+                    branch.branches.forEach(b => {
+                        let startX = endX;
+                        let startY = endY;
+                        
+                        // 如果有錯位偏移 (主要用於樹幹到分枝的過渡)
+                        if (b.staggerOffset && b.staggerOffset < 1.0) {
+                            const t = b.staggerOffset;
+                            // 使用二次貝塞爾曲線公式計算偏移起點
+                            startX = (1 - t) * (1 - t) * x + 2 * (1 - t) * t * midX + t * t * endX;
+                            startY = (1 - t) * (1 - t) * y + 2 * (1 - t) * t * midY + t * t * endY;
+                        }
+                        
+                        drawBranch(ctx, b, startX, startY, currentAngle + branch.angle, currentGrowth, depth - 1, currentSway);
+                    });
                     
                     // Draw Leaves
                     if (depth <= 4) {
@@ -1476,7 +1682,7 @@
                         // Map SVG coordinate system to Canvas
                         // SVG: viewBox="-200 -450 400 500"
                         const scale = rect.width / 400;
-                        ctx.translate(rect.width / 2, rect.height * (450 / 500));
+                        ctx.translate(rect.width / 2, rect.height * 0.92);
                         ctx.scale(scale, scale);
                         
                         if (treeStructureRef.current) {
@@ -1506,15 +1712,15 @@
             const { line1, line2 } = getGuidance();
 
             return (
-                <div className="body-scan-container animate-[gentleFadeIn_0.8s_ease-in-out]">
-                    <div className="body-image-wrapper !max-h-[60vh] !mt-0 !aspect-[4/5] relative">
+                <div className="body-scan-container !justify-center !pt-0 animate-[gentleFadeIn_0.8s_ease-in-out]">
+                    <div className="body-image-wrapper !max-h-[65vh] sm:!max-h-[50vh] !mt-0 !aspect-[4/5] relative">
                         {/* Tree Canvas */}
                         <canvas 
                             ref={canvasRef}
                             className="absolute inset-0 w-full h-full drop-shadow-xl pointer-events-none"
                             style={{ zIndex: 1 }}
                         />
-                        <svg viewBox="-200 -450 400 500" className="w-full h-full overflow-visible relative" style={{ zIndex: 2 }}>
+                        <svg viewBox="-200 -460 400 500" className="w-full h-full overflow-visible relative" style={{ zIndex: 2 }}>
                             <defs>
                                 <filter id="shadowBlur" x="-50%" y="-50%" width="200%" height="200%">
                                     <feGaussianBlur in="SourceGraphic" stdDeviation="10" />
@@ -1561,7 +1767,7 @@
 
                         {/* Timeline / Progress Bar */}
                         {musicStarted && (
-                            <div className="absolute bottom-2 left-1/2 -translate-x-1/2 w-48 h-1 bg-slate-200/50 rounded-full overflow-hidden backdrop-blur-sm">
+                            <div className="absolute bottom-[-24px] left-1/2 -translate-x-1/2 w-48 h-1 bg-slate-200/50 rounded-full overflow-hidden backdrop-blur-sm">
                                 <div 
                                     className="h-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.5)]"
                                     style={{ width: `${growth * 100}%` }}
@@ -1570,7 +1776,7 @@
                         )}
                     </div>
 
-                    <div className="guidance-area flex flex-col items-center justify-center mt-4 min-h-[100px] sm:min-h-[120px]">
+                    <div className="guidance-area flex flex-col items-center justify-center mt-8 min-h-[100px] sm:min-h-[120px]">
                         <div key={line1 + line2} className="flex flex-col items-center gap-2 animate-[slowFadeInOut_5s_ease-in-out]">
                             <p className={`${isInhalePhase ? 'text-emerald-600' : 'text-sky-600'} text-2xl sm:text-3xl font-black tracking-widest whitespace-nowrap transition-colors duration-1000`}>
                                 {line1}
