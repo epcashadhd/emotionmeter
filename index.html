@@ -953,7 +953,7 @@
                     )}
 
                     {/* Exercise Content */}
-                    <div className={`flex-1 w-full flex flex-col items-center justify-center relative transition-all duration-700 ${isTransitioning ? 'opacity-0 scale-95' : 'opacity-100 scale-100'} ${exerciseType === 'body' || exerciseType === 'emotion-tree' ? '' : 'mobile-landscape-scale'}`}>
+                    <div className={`flex-1 w-full flex flex-col items-center ${exerciseType === 'emotion-tree' ? 'justify-start pt-2 sm:pt-4' : 'justify-center'} relative transition-all duration-700 ${isTransitioning ? 'opacity-0 scale-95' : 'opacity-100 scale-100'} ${exerciseType === 'body' || exerciseType === 'emotion-tree' ? '' : 'mobile-landscape-scale'}`}>
                         {exerciseType && exerciseType.startsWith('sphere') && (
                             <>
                                 <div className="relative flex flex-col items-center justify-center gap-8 sm:gap-12 mobile-landscape-compact">
@@ -1409,7 +1409,7 @@
                     ctx.lineWidth = baseWidth * growthFactor;
                     
                     ctx.lineCap = "round";
-                    ctx.strokeStyle = depth > 4 ? "#3E2723" : (depth > 2 ? "#2E7D32" : "#4CAF50");
+                    ctx.strokeStyle = depth > 4 ? "#3E2723" : (depth > 2 ? "#795548" : "#4CAF50");
 
                     if (depth === 8) {
                         // 為第一層樹幹實現平滑的手繪形狀
@@ -1712,8 +1712,8 @@
             const { line1, line2 } = getGuidance();
 
             return (
-                <div className="body-scan-container !justify-center !pt-0 animate-[gentleFadeIn_0.8s_ease-in-out]">
-                    <div className="body-image-wrapper !max-h-[65vh] sm:!max-h-[50vh] !mt-0 !aspect-[4/5] relative">
+                <div className="body-scan-container !justify-start !pt-0 animate-[gentleFadeIn_0.8s_ease-in-out]">
+                    <div className="body-image-wrapper !max-h-[60vh] sm:!max-h-[45vh] !mt-0 !aspect-[4/5] relative">
                         {/* Tree Canvas */}
                         <canvas 
                             ref={canvasRef}
@@ -1776,7 +1776,7 @@
                         )}
                     </div>
 
-                    <div className="guidance-area flex flex-col items-center justify-center mt-8 min-h-[100px] sm:min-h-[120px]">
+                    <div className="guidance-area flex flex-col items-center justify-center mt-2 sm:mt-4 min-h-[80px] sm:min-h-[100px]">
                         <div key={line1 + line2} className="flex flex-col items-center gap-2 animate-[slowFadeInOut_5s_ease-in-out]">
                             <p className={`${isInhalePhase ? 'text-emerald-600' : 'text-sky-600'} text-2xl sm:text-3xl font-black tracking-widest whitespace-nowrap transition-colors duration-1000`}>
                                 {line1}
