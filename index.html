@@ -925,20 +925,30 @@
                                 </svg>
                             </button>
 
-                            <button 
-                                onClick={() => { 
-                                    setExerciseType('emotion-tree'); 
-                                    setShowSphereOptions(false); 
-                                    setShowSquareOptions(false);
-                                    setDuration('infinite');
-                                    setExerciseStartTime(null);
-                                    setTotalProgress(0);
-                                    setPhase('prepare');
-                                }}
-                                className={`w-12 h-12 sm:w-14 sm:h-14 rounded-2xl flex items-center justify-center transition-all duration-300 shadow-sm border-2 mobile-landscape-btn ${exerciseType === 'emotion-tree' ? 'bg-emerald-100 border-emerald-400 scale-110' : 'bg-white border-slate-100 hover:bg-slate-50'}`}
-                            >
-                                <span className="text-2xl sm:text-3xl mobile-landscape-emoji">🌳</span>
-                            </button>
+                            <div className="relative flex flex-col items-center">
+                                <button 
+                                    onClick={() => { 
+                                        setExerciseType('emotion-tree'); 
+                                        setShowSphereOptions(false); 
+                                        setShowSquareOptions(false);
+                                        setDuration('infinite');
+                                        setExerciseStartTime(null);
+                                        setTotalProgress(0);
+                                        setPhase('prepare');
+                                    }}
+                                    className={`w-12 h-12 sm:w-14 sm:h-14 rounded-2xl flex items-center justify-center transition-all duration-300 shadow-sm border-2 mobile-landscape-btn ${exerciseType === 'emotion-tree' ? 'bg-emerald-100 border-emerald-400 scale-110' : 'bg-white border-slate-100 hover:bg-slate-50'}`}
+                                >
+                                    <span className="text-2xl sm:text-3xl mobile-landscape-emoji">🌳</span>
+                                </button>
+                                {exerciseType === 'emotion-tree' && (
+                                    <button 
+                                        onClick={() => window.dispatchEvent(new CustomEvent('grow-tree-instantly'))}
+                                        className="absolute top-full mt-2 px-2 py-1 bg-emerald-500 text-white text-[10px] sm:text-xs rounded-md font-bold shadow-sm whitespace-nowrap z-50 animate-bounce"
+                                    >
+                                        快速成長
+                                    </button>
+                                )}
+                            </div>
                         </div>
                     </div>
 
@@ -1202,6 +1212,19 @@
             const fadeIntervalRef = useRef(null);
             const canvasRef = useRef(null);
 
+            const growInstantly = () => {
+                growthRef.current = 1;
+                setGrowth(1);
+                setIsComplete(true);
+                setMusicStarted(true);
+            };
+
+            useEffect(() => {
+                const handleGrow = () => growInstantly();
+                window.addEventListener('grow-tree-instantly', handleGrow);
+                return () => window.removeEventListener('grow-tree-instantly', handleGrow);
+            }, []);
+
             // Generate tree structure once
             if (!treeStructureRef.current) {
                 const generateTree = (depth, angle, length, curve = 0, thicknessScale = 1) => {
@@ -1212,15 +1235,15 @@
                     let numBranches = 0;
                     if (depth > 1) {
                         const rand = Math.random();
-                        if (depth === 8) {
-                            // 第一層分出 4 根主枝
+                        if (depth === 7) {
+                            // 第一層分出 4 根主枝 (Trunk)
                             numBranches = 4;
-                        } else if (depth === 7) {
+                        } else if (depth === 6) {
                             // 第二層分枝數量
                             numBranches = rand > 0.5 ? 3 : 4;
-                        } else if (depth > 6) {
+                        } else if (depth > 5) {
                             numBranches = rand > 0.3 ? 2 : 3;
-                        } else if (depth > 3) {
+                        } else if (depth > 2) {
                             numBranches = rand > 0.4 ? 3 : 2;
                         } else {
                             numBranches = rand > 0.3 ? 2 : 3;
@@ -1230,7 +1253,9 @@
                     for (let i = 0; i < numBranches; i++) {
                         // 90% layer grows upward: tighten spread and angle constraints
                         let spread = 20 + Math.random() * 30;
-                        if (depth >= 2) spread = 15 + Math.random() * 25;
+                        if (depth === 6) spread = 35 + Math.random() * 25; // Layer 2
+                        else if (depth === 5) spread = 30 + Math.random() * 20; // Layer 3: Increase spread to prevent sticking
+                        else if (depth >= 2) spread = 15 + Math.random() * 25;
 
                         let angleOffset = 0;
                         if (numBranches === 1) {
@@ -1243,23 +1268,35 @@
                         }
                         
                         let newAngle = angle + angleOffset;
-                        if (depth >= 2) newAngle = Math.max(-45, Math.min(45, newAngle));
+                        if (depth >= 2) newAngle = Math.max(-35, Math.min(35, newAngle));
 
-                        let lengthScale = 0.65 + Math.random() * 0.25;
-                        if (depth === 8) lengthScale = 0.45 + Math.random() * 0.15;
+                        let lengthScale = 0.58 + Math.random() * 0.22;
+                        // Shorten Layer 2 (depth 6) to improve proportions
+                        if (depth === 6) lengthScale *= 0.75;
+                        // Shorten layers 5, 6, 7 (depth 3, 2, 1) to keep tree on screen
+                        if (depth <= 3) lengthScale *= 0.7;
+
+                        // Upward bias: central branches (angle near 0) grow longer to avoid flat top
+                        const upwardBoost = Math.cos(newAngle * Math.PI / 180);
+                        lengthScale *= (1 + Math.pow(upwardBoost, 4) * 0.35);
+
+                        if (depth === 7) lengthScale = 0.45 + Math.random() * 0.15;
                         const newLength = length * lengthScale;
                         
-                        const nextCurve = (Math.random() * 16 - 8);
+                        const nextCurve = (Math.random() * 6 - 3);
                         
                         let nextThicknessScale = 0.7 + Math.random() * 0.6;
                         let staggerOffset = 1.0; // 預設從頂端長出
 
-                        if (depth === 8) {
+                        if (depth === 7) {
                             nextThicknessScale = 1.6;
-                            // 讓分枝從樹幹更低的位置冒出 (60% ~ 88%)，增加重疊感
-                            staggerOffset = 0.6 + (i * 0.07); 
-                        } else if (depth === 7 && i >= 3) {
-                            nextThicknessScale *= 0.6;
+                            // Raise branch starting points to 85% - 94% of trunk height
+                            // This keeps the lower trunk clean and pushes the canopy higher
+                            staggerOffset = 0.85 + (i * 0.03); 
+                        } else if (depth === 6) {
+                            // Layer 2 branches: slightly stagger Layer 3 children to avoid sticking
+                            staggerOffset = 0.88 + (i * 0.03);
+                            if (i >= 3) nextThicknessScale *= 0.6;
                         }
                         
                         branches.push({
@@ -1268,10 +1305,26 @@
                         });
                     }
 
+                    // Add extra fine branches (twigs) for depths 3-6 to increase leaf density
+                    // Removed depth 7 (trunk) to keep the lower section clean
+                    if (depth >= 3 && depth <= 6) {
+                        const numTwigs = 1 + Math.floor(Math.random() * 2);
+                        for (let t = 0; t < numTwigs; t++) {
+                            const twigAngle = angle + (Math.random() * 80 - 40);
+                            const twigLength = length * (0.25 + Math.random() * 0.2);
+                            const twigThickness = thicknessScale * 0.4;
+                            const twigCurve = (Math.random() * 10 - 5);
+                            branches.push({
+                                ...generateTree(depth - 1, twigAngle, twigLength, twigCurve, twigThickness),
+                                staggerOffset: 0.4 + Math.random() * 0.5 // Grow from along the branch
+                            });
+                        }
+                    }
+
                     const result = { angle, length, branches, curve, thicknessScale, id: Math.random() };
 
-                    // 為樹幹 (depth 8) 預先計算根部與鋸齒數據，防止生長時抖動
-                    if (depth === 8) {
+                    // 為樹幹 (depth 7) 預先計算根部與鋸齒數據，防止生長時抖動
+                    if (depth === 7) {
                         const numRoots = 7 + Math.floor(Math.random() * 3);
                         const roots = [];
                         for (let r = 0; r < numRoots; r++) {
@@ -1292,7 +1345,7 @@
                 // Increase depth to 8 for more detail and density
                 // 根據螢幕寬度動態調整起始長度，手機與平板版調大，桌面版維持 60 以防頂部遮擋
                 const initialLength = window.innerWidth < 640 ? 85 : (window.innerWidth < 1024 ? 75 : 60);
-                treeStructureRef.current = generateTree(8, 0, initialLength, 0);
+                treeStructureRef.current = generateTree(7, 0, initialLength, 0);
             }
 
             useEffect(() => {
@@ -1376,10 +1429,10 @@
                         if (d === 8) return 0;
                         // 如果有錯位偏移，根據偏移量動態計算啟動時間
                         // 確保分枝在樹幹長到該位置時準時冒出
-                        if (d === 7 && sOffset) return sOffset * 0.16; 
-                        if (d === 7) return 0.14;
-                        if (d >= 2) return 0.14 + (7 - d) * 0.08;
-                        return 0.55;
+                        if (d === 7 && sOffset) return sOffset * 0.1; 
+                        if (d === 7) return 0.08;
+                        if (d >= 2) return 0.08 + (7 - d) * 0.05;
+                        return 0.45;
                     };
                     
                     const branchThreshold = getThreshold(depth, branch.staggerOffset);
@@ -1548,8 +1601,8 @@
                             
                             for (let i = 1; i <= branchSegments; i++) {
                                 const t = i / branchSegments;
-                                const tx = (1 - t) * (1 - t) * x + 2 * (1 - t) * t * midX + t * t * endX;
-                                const ty = (1 - t) * (1 - t) * y + 2 * (1 - t) * t * midY + t * t * endY;
+                                const tx = t < 0.5 ? x + (midX - x) * (t * 2) : midX + (endX - midX) * ((t - 0.5) * 2);
+                                const ty = t < 0.5 ? y + (midY - y) * (t * 2) : midY + (endY - midY) * ((t - 0.5) * 2);
                                 
                                 // 寬度從 baseWidth 漸變到末端
                                 const taper = 1 - (t * 0.85); 
@@ -1568,7 +1621,8 @@
                             ctx.lineWidth = baseWidth * growthFactor;
                             ctx.beginPath();
                             ctx.moveTo(x, y);
-                            ctx.quadraticCurveTo(midX, midY, endX, endY);
+                            ctx.lineTo(midX, midY);
+                            ctx.lineTo(endX, endY);
                             ctx.stroke();
                         }
                     }
@@ -1590,17 +1644,21 @@
                     });
                     
                     // Draw Leaves
-                    if (depth <= 4) {
+                    // User requested no leaves on layer 3 (depth 5) and layer 4 (depth 4). 
+                    // Leaves now start from layer 5 (depth 3) down to layer 7 (depth 1).
+                    if (depth <= 3) {
                         const leafOpacity = Math.max(0, Math.min(1, (localGrowth - 0.2) * 1.25));
                         if (leafOpacity > 0) {
                             ctx.save();
                             ctx.globalAlpha = leafOpacity * 0.6;
-                            ctx.fillStyle = depth === 1 ? "#A5D6A7" : "#81C784";
+                            // Color variation based on depth to add depth and avoid "broccoli" look
+                            ctx.fillStyle = depth <= 2 ? "#A5D6A7" : "#81C784";
                             ctx.beginPath();
-                            ctx.arc(endX, endY, depth === 1 ? 6 : 4, 0, Math.PI * 2);
+                            ctx.arc(endX, endY, depth <= 2 ? 6 : 4, 0, Math.PI * 2);
                             ctx.fill();
                             
-                            if (depth <= 2) {
+                            // Lush clusters for all leafy layers (depth 1-3)
+                            if (depth <= 3) {
                                 ctx.globalAlpha = leafOpacity * 0.5;
                                 ctx.fillStyle = "#C8E6C9";
                                 ctx.beginPath(); ctx.arc(endX + 5, endY - 4, 3, 0, Math.PI * 2); ctx.fill();
@@ -1622,7 +1680,8 @@
                                 ctx.beginPath(); ctx.arc(endX - 7, endY, 2.2, 0, Math.PI * 2); ctx.fill();
                             }
                             
-                            if (depth === 1) {
+                            // Extra lushness for the very tips and the starting leafy layer
+                            if (depth === 1 || depth === 3) {
                                 ctx.globalAlpha = leafOpacity * 0.5;
                                 ctx.fillStyle = "#A5D6A7";
                                 ctx.beginPath(); ctx.arc(endX + 8, endY + 2, 2.5, 0, Math.PI * 2); ctx.fill();
@@ -1651,8 +1710,8 @@
 
                         // Grow whenever pressing
                         if (isPressing) {
-                            // Grow 80s of total pressing time to full (1.0)
-                            growthRef.current = Math.min(1, growthRef.current + delta / 80000);
+                            // Grow 70s of total pressing time to full (1.0)
+                            growthRef.current = Math.min(1, growthRef.current + delta / 70000);
                             setGrowth(growthRef.current);
                             if (growthRef.current >= 1) {
                                 setIsComplete(true);
