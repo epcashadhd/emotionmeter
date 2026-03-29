@@ -1160,6 +1160,16 @@
                                 white-space: nowrap;
                             }
                         }
+                        /* Tablet/Desktop Landscape (Mac & Tablet Horizontal) */
+                        @media (orientation: landscape) and (min-height: 501px) {
+                            .body-sensation-tool .body-image-wrapper {
+                                max-height: 65vh !important;
+                                margin-top: -1rem !important;
+                            }
+                            .body-sensation-tool .guidance-area {
+                                margin-top: -1rem !important;
+                            }
+                        }
                         /* Tablet Portrait */
                         @media (min-width: 768px) and (max-width: 1024px) and (orientation: portrait) {
                             .body-image-wrapper {
@@ -2011,7 +2021,7 @@
             };
 
             return (
-                <div className="body-scan-container animate-[gentleFadeIn_0.8s_ease-in-out] relative">
+                <div className="body-scan-container body-sensation-tool animate-[gentleFadeIn_0.8s_ease-in-out] relative">
                     {/* Music Toggle Button */}
                     <div className="absolute top-4 right-[12%] sm:right-0 z-50 p-2 sm:p-4 mobile-landscape-music">
                         <button 
