@@ -2278,6 +2278,7 @@
             const [text, setText] = useState(() => localStorage.getItem('emotionExplorer_text') || '');
             const [meterLevel, setMeterLevel] = useState(() => Number(localStorage.getItem('emotionExplorer_meterLevel')) || 1);
             const canvasRef = useRef(null);
+            const activeCanvasRef = useRef(null); // Second canvas for active stroke
             const [isDrawing, setIsDrawing] = useState(false);
             const isDrawingRef = useRef(false);
             const [isDraggingMeter, setIsDraggingMeter] = useState(false);
@@ -2386,8 +2387,8 @@
                 localStorage.setItem('emotionExplorer_meterLevel', newLevel);
             };
             
-            // Redraw function
-            const redraw = useCallback(() => {
+            // Redraw function for main canvas (history)
+            const redrawMain = useCallback(() => {
                 const canvas = canvasRef.current;
                 if (!canvas) return;
                 const ctx = canvas.getContext('2d', { alpha: false });
@@ -2399,81 +2400,74 @@
                 ctx.lineJoin = 'round';
                 ctx.globalCompositeOperation = 'source-over';
 
-                const drawStroke = (stroke) => {
+                const drawStroke = (targetCtx, stroke) => {
                     if (!stroke || !stroke.points || stroke.points.length === 0) return;
                     
-                    ctx.beginPath();
+                    targetCtx.beginPath();
                     if (stroke.mode === 'erase') {
-                        ctx.strokeStyle = '#FFFFFF';
-                        ctx.fillStyle = '#FFFFFF';
-                        ctx.lineWidth = stroke.eraserSize;
+                        targetCtx.strokeStyle = '#FFFFFF';
+                        targetCtx.fillStyle = '#FFFFFF';
+                        targetCtx.lineWidth = stroke.eraserSize;
                     } else {
-                        ctx.strokeStyle = '#334155';
-                        ctx.fillStyle = '#334155';
-                        ctx.lineWidth = 3;
+                        targetCtx.strokeStyle = '#334155';
+                        targetCtx.fillStyle = '#334155';
+                        targetCtx.lineWidth = 3;
                     }
 
                     if (stroke.points.length === 1) {
                         const p = stroke.points[0];
-                        ctx.arc(p.x, p.y, ctx.lineWidth / 2, 0, Math.PI * 2);
-                        ctx.fill();
+                        targetCtx.arc(p.x, p.y, targetCtx.lineWidth / 2, 0, Math.PI * 2);
+                        targetCtx.fill();
                     } else {
-                        ctx.moveTo(stroke.points[0].x, stroke.points[0].y);
+                        targetCtx.moveTo(stroke.points[0].x, stroke.points[0].y);
                         for (let i = 1; i < stroke.points.length; i++) {
-                            ctx.lineTo(stroke.points[i].x, stroke.points[i].y);
+                            targetCtx.lineTo(stroke.points[i].x, stroke.points[i].y);
                         }
-                        ctx.stroke();
+                        targetCtx.stroke();
                     }
                 };
 
-                // Draw history
-                strokeHistory.forEach(drawStroke);
-
-                // Use ref for isDrawing to ensure we have the most up-to-date state during rapid events
-                if (isDrawingRef.current && currentStrokeRef.current) {
-                    drawStroke(currentStrokeRef.current);
-                }
+                strokeHistory.forEach(stroke => drawStroke(ctx, stroke));
             }, [strokeHistory]);
 
             // Canvas Initialization and Event Listeners
             useEffect(() => {
                 const canvas = canvasRef.current;
-                if (!canvas) return;
+                const activeCanvas = activeCanvasRef.current;
+                if (!canvas || !activeCanvas) return;
 
                 const initCanvas = () => {
-                    canvas.width = canvas.offsetWidth;
-                    canvas.height = canvas.offsetHeight;
-                    redraw();
+                    const w = canvas.offsetWidth;
+                    const h = canvas.offsetHeight;
+                    canvas.width = w;
+                    canvas.height = h;
+                    activeCanvas.width = w;
+                    activeCanvas.height = h;
+                    redrawMain();
                 };
 
                 initCanvas();
                 const timer = setTimeout(initCanvas, 100);
 
-                // Manual event listeners for better performance and passive:false support
                 const onPointerDown = (e) => {
                     if (modeRef.current !== 'draw' && modeRef.current !== 'erase') return;
-                    
-                    // Prevent default to stop system gestures
                     e.preventDefault();
                     e.stopPropagation();
                     
-                    // Force finish any existing stroke to prevent "stuck" states
-                    if (isDrawingRef.current) {
-                        onPointerUp(e);
-                    }
+                    if (isDrawingRef.current) onPointerUp(e);
                     
                     try {
-                        canvas.setPointerCapture(e.pointerId);
+                        activeCanvas.setPointerCapture(e.pointerId);
                     } catch (err) {}
 
-                    const rect = canvas.getBoundingClientRect();
+                    const rect = activeCanvas.getBoundingClientRect();
                     canvasRectRef.current = rect;
                     const x = e.clientX - rect.left;
                     const y = e.clientY - rect.top;
 
-                    const ctx = canvas.getContext('2d');
+                    const ctx = activeCanvas.getContext('2d');
+                    ctx.clearRect(0, 0, activeCanvas.width, activeCanvas.height);
                     
-                    // CRITICAL: Set styles IMMEDIATELY before drawing anything
                     const isEraser = modeRef.current === 'erase';
                     const color = isEraser ? '#FFFFFF' : '#334155';
                     const size = isEraser ? eraserSize : 3;
@@ -2483,14 +2477,12 @@
                     ctx.lineWidth = size;
                     ctx.lineCap = 'round';
                     ctx.lineJoin = 'round';
-                    ctx.globalCompositeOperation = 'source-over';
 
-                    // Draw initial dot for instant feedback (crucial for Apple Pencil taps)
+                    // Draw initial dot on active canvas
                     ctx.beginPath();
                     ctx.arc(x, y, size / 2, 0, Math.PI * 2);
                     ctx.fill();
 
-                    // Setup path for movement
                     ctx.beginPath();
                     ctx.moveTo(x, y);
 
@@ -2513,13 +2505,10 @@
                         hasDrawnRef.current = true;
                     }
 
-                    const ctx = canvas.getContext('2d');
-                    const rect = canvasRectRef.current || canvas.getBoundingClientRect();
-                    
-                    // Use coalesced events for much smoother high-frequency input (Apple Pencil)
+                    const ctx = activeCanvas.getContext('2d');
+                    const rect = canvasRectRef.current || activeCanvas.getBoundingClientRect();
                     const events = e.getCoalescedEvents ? e.getCoalescedEvents() : [e];
                     
-                    // Ensure styles are still correct (prevent leakage)
                     const isEraser = modeRef.current === 'erase';
                     ctx.strokeStyle = isEraser ? '#FFFFFF' : '#334155';
                     ctx.lineWidth = isEraser ? eraserSize : 3;
@@ -2527,7 +2516,7 @@
                     events.forEach(ev => {
                         const x = ev.clientX - rect.left;
                         const y = ev.clientY - rect.top;
-
+                        
                         if (eraserRef.current) {
                             eraserRef.current.style.left = `${x}px`;
                             eraserRef.current.style.top = `${y}px`;
@@ -2548,7 +2537,7 @@
                     e.stopPropagation();
 
                     try {
-                        canvas.releasePointerCapture(e.pointerId);
+                        activeCanvas.releasePointerCapture(e.pointerId);
                     } catch (err) {}
 
                     isDrawingRef.current = false;
@@ -2556,32 +2545,66 @@
 
                     if (currentStrokeRef.current && currentStrokeRef.current.points.length > 0) {
                         const finishedStroke = currentStrokeRef.current;
+                        
+                        // Draw the finished stroke onto the main canvas immediately
+                        const mainCtx = canvas.getContext('2d');
+                        mainCtx.beginPath();
+                        if (finishedStroke.mode === 'erase') {
+                            mainCtx.strokeStyle = '#FFFFFF';
+                            mainCtx.fillStyle = '#FFFFFF';
+                            mainCtx.lineWidth = finishedStroke.eraserSize;
+                        } else {
+                            mainCtx.strokeStyle = '#334155';
+                            mainCtx.fillStyle = '#334155';
+                            mainCtx.lineWidth = 3;
+                        }
+                        
+                        if (finishedStroke.points.length === 1) {
+                            const p = finishedStroke.points[0];
+                            mainCtx.arc(p.x, p.y, mainCtx.lineWidth / 2, 0, Math.PI * 2);
+                            mainCtx.fill();
+                        } else {
+                            mainCtx.moveTo(finishedStroke.points[0].x, finishedStroke.points[0].y);
+                            for (let i = 1; i < finishedStroke.points.length; i++) {
+                                mainCtx.lineTo(finishedStroke.points[i].x, finishedStroke.points[i].y);
+                            }
+                            mainCtx.stroke();
+                        }
+
                         setStrokeHistory(prev => [...prev, finishedStroke]);
                     }
+                    
+                    // Clear active canvas
+                    const ctx = activeCanvas.getContext('2d');
+                    ctx.clearRect(0, 0, activeCanvas.width, activeCanvas.height);
                     currentStrokeRef.current = null;
                 };
 
-                canvas.addEventListener('pointerdown', onPointerDown, { passive: false });
+                activeCanvas.addEventListener('pointerdown', onPointerDown, { passive: false });
                 window.addEventListener('pointermove', onPointerMove, { passive: false });
                 window.addEventListener('pointerup', onPointerUp, { passive: false });
                 window.addEventListener('pointercancel', onPointerUp, { passive: false });
 
                 const handleResize = () => {
-                    canvas.width = canvas.offsetWidth;
-                    canvas.height = canvas.offsetHeight;
-                    redraw();
+                    const w = canvas.offsetWidth;
+                    const h = canvas.offsetHeight;
+                    canvas.width = w;
+                    canvas.height = h;
+                    activeCanvas.width = w;
+                    activeCanvas.height = h;
+                    redrawMain();
                 };
                 window.addEventListener('resize', handleResize);
 
                 return () => {
                     clearTimeout(timer);
-                    canvas.removeEventListener('pointerdown', onPointerDown);
+                    activeCanvas.removeEventListener('pointerdown', onPointerDown);
                     window.removeEventListener('pointermove', onPointerMove);
                     window.removeEventListener('pointerup', onPointerUp);
                     window.removeEventListener('pointercancel', onPointerUp);
                     window.removeEventListener('resize', handleResize);
                 };
-            }, [eraserSize, redraw]);
+            }, [eraserSize, redrawMain]);
 
             // Persistence logic
             useEffect(() => {
@@ -2609,9 +2632,16 @@
 
             const clearAll = () => {
                 const canvas = canvasRef.current;
-                const ctx = canvas.getContext('2d');
-                ctx.fillStyle = '#FFFFFF';
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                const activeCanvas = activeCanvasRef.current;
+                if (canvas) {
+                    const ctx = canvas.getContext('2d');
+                    ctx.fillStyle = '#FFFFFF';
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                }
+                if (activeCanvas) {
+                    const ctx = activeCanvas.getContext('2d');
+                    ctx.clearRect(0, 0, activeCanvas.width, activeCanvas.height);
+                }
                 setText('');
                 setHasDrawn(false);
                 setStrokeHistory([]);
@@ -2823,12 +2853,20 @@
                                 </button>
                             </div>
 
-                            {/* Canvas Layer */}
-                            <canvas
-                                ref={canvasRef}
-                                className={`absolute inset-0 w-full h-full touch-none ${mode === 'draw' || mode === 'erase' ? 'z-10' : 'z-0 pointer-events-none'}`}
-                                style={{ cursor: getCursorStyle() }}
-                            />
+                            {/* Drawing Area Container */}
+                            <div className="absolute inset-0 w-full h-full">
+                                {/* Main Canvas (History) */}
+                                <canvas
+                                    ref={canvasRef}
+                                    className="absolute inset-0 w-full h-full"
+                                />
+                                {/* Active Canvas (Current Stroke) */}
+                                <canvas
+                                    ref={activeCanvasRef}
+                                    className={`absolute inset-0 w-full h-full touch-none ${mode === 'draw' || mode === 'erase' ? 'z-10' : 'z-0 pointer-events-none'}`}
+                                    style={{ cursor: getCursorStyle() }}
+                                />
+                            </div>
 
                             {/* Custom Eraser Cursor for Touch */}
                             {mode === 'erase' && isDrawing && (
