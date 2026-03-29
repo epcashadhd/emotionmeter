@@ -2292,11 +2292,20 @@
                 const parsed = saved ? JSON.parse(saved) : [];
                 return parsed.length > 0;
             });
+            const hasDrawnRef = useRef(false);
+            useEffect(() => {
+                hasDrawnRef.current = hasDrawn;
+            }, [hasDrawn]);
+
             const trackRef = useRef(null);
             const saveTimeoutRef = useRef(null);
             const currentStrokeRef = useRef(null);
             const canvasRectRef = useRef(null);
             const eraserRef = useRef(null);
+            const modeRef = useRef('draw');
+            useEffect(() => {
+                modeRef.current = mode;
+            }, [mode]);
             
             // Enlargement Logic
             const [enlargedEmotion, setEnlargedEmotion] = useState(null);
@@ -2426,38 +2435,153 @@
                 }
             }, [strokeHistory]);
 
-            // Canvas Initialization (Only on mount)
+            // Canvas Initialization and Event Listeners
             useEffect(() => {
                 const canvas = canvasRef.current;
-                if (canvas) {
-                    const initCanvas = () => {
-                        canvas.width = canvas.offsetWidth;
-                        canvas.height = canvas.offsetHeight;
-                        redraw();
-                    };
-                    initCanvas();
-                    setTimeout(initCanvas, 100);
-                }
-            }, []); // Empty dependency: only run once on mount
+                if (!canvas) return;
 
-            // Separate effect for redrawing when history changes (without resizing canvas)
-            useEffect(() => {
-                redraw();
-            }, [redraw]);
+                const initCanvas = () => {
+                    canvas.width = canvas.offsetWidth;
+                    canvas.height = canvas.offsetHeight;
+                    redraw();
+                };
 
-            // Handle resize
-            useEffect(() => {
-                const handleResize = () => {
-                    const canvas = canvasRef.current;
-                    if (canvas) {
-                        canvas.width = canvas.offsetWidth;
-                        canvas.height = canvas.offsetHeight;
-                        redraw();
+                initCanvas();
+                const timer = setTimeout(initCanvas, 100);
+
+                // Manual event listeners for better performance and passive:false support
+                const onPointerDown = (e) => {
+                    if (modeRef.current !== 'draw' && modeRef.current !== 'erase') return;
+                    
+                    // Prevent default to stop system gestures
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
+                    // Force finish any existing stroke to prevent "stuck" states
+                    if (isDrawingRef.current) {
+                        onPointerUp(e);
                     }
+                    
+                    try {
+                        canvas.setPointerCapture(e.pointerId);
+                    } catch (err) {}
+
+                    const rect = canvas.getBoundingClientRect();
+                    canvasRectRef.current = rect;
+                    const x = e.clientX - rect.left;
+                    const y = e.clientY - rect.top;
+
+                    const ctx = canvas.getContext('2d');
+                    
+                    // CRITICAL: Set styles IMMEDIATELY before drawing anything
+                    const isEraser = modeRef.current === 'erase';
+                    const color = isEraser ? '#FFFFFF' : '#334155';
+                    const size = isEraser ? eraserSize : 3;
+                    
+                    ctx.strokeStyle = color;
+                    ctx.fillStyle = color;
+                    ctx.lineWidth = size;
+                    ctx.lineCap = 'round';
+                    ctx.lineJoin = 'round';
+                    ctx.globalCompositeOperation = 'source-over';
+
+                    // Draw initial dot for instant feedback (crucial for Apple Pencil taps)
+                    ctx.beginPath();
+                    ctx.arc(x, y, size / 2, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    // Setup path for movement
+                    ctx.beginPath();
+                    ctx.moveTo(x, y);
+
+                    isDrawingRef.current = true;
+                    setIsDrawing(true);
+                    currentStrokeRef.current = {
+                        mode: modeRef.current,
+                        points: [{ x, y }],
+                        eraserSize: size
+                    };
+                };
+
+                const onPointerMove = (e) => {
+                    if (!isDrawingRef.current) return;
+                    e.preventDefault();
+                    e.stopPropagation();
+
+                    if (!hasDrawnRef.current) {
+                        setHasDrawn(true);
+                        hasDrawnRef.current = true;
+                    }
+
+                    const ctx = canvas.getContext('2d');
+                    const rect = canvasRectRef.current || canvas.getBoundingClientRect();
+                    
+                    // Use coalesced events for much smoother high-frequency input (Apple Pencil)
+                    const events = e.getCoalescedEvents ? e.getCoalescedEvents() : [e];
+                    
+                    // Ensure styles are still correct (prevent leakage)
+                    const isEraser = modeRef.current === 'erase';
+                    ctx.strokeStyle = isEraser ? '#FFFFFF' : '#334155';
+                    ctx.lineWidth = isEraser ? eraserSize : 3;
+
+                    events.forEach(ev => {
+                        const x = ev.clientX - rect.left;
+                        const y = ev.clientY - rect.top;
+
+                        if (eraserRef.current) {
+                            eraserRef.current.style.left = `${x}px`;
+                            eraserRef.current.style.top = `${y}px`;
+                        }
+
+                        ctx.lineTo(x, y);
+                        if (currentStrokeRef.current) {
+                            currentStrokeRef.current.points.push({ x, y });
+                        }
+                    });
+                    
+                    ctx.stroke();
+                };
+
+                const onPointerUp = (e) => {
+                    if (!isDrawingRef.current) return;
+                    e.preventDefault();
+                    e.stopPropagation();
+
+                    try {
+                        canvas.releasePointerCapture(e.pointerId);
+                    } catch (err) {}
+
+                    isDrawingRef.current = false;
+                    setIsDrawing(false);
+
+                    if (currentStrokeRef.current && currentStrokeRef.current.points.length > 0) {
+                        const finishedStroke = currentStrokeRef.current;
+                        setStrokeHistory(prev => [...prev, finishedStroke]);
+                    }
+                    currentStrokeRef.current = null;
+                };
+
+                canvas.addEventListener('pointerdown', onPointerDown, { passive: false });
+                window.addEventListener('pointermove', onPointerMove, { passive: false });
+                window.addEventListener('pointerup', onPointerUp, { passive: false });
+                window.addEventListener('pointercancel', onPointerUp, { passive: false });
+
+                const handleResize = () => {
+                    canvas.width = canvas.offsetWidth;
+                    canvas.height = canvas.offsetHeight;
+                    redraw();
                 };
                 window.addEventListener('resize', handleResize);
-                return () => window.removeEventListener('resize', handleResize);
-            }, [redraw]);
+
+                return () => {
+                    clearTimeout(timer);
+                    canvas.removeEventListener('pointerdown', onPointerDown);
+                    window.removeEventListener('pointermove', onPointerMove);
+                    window.removeEventListener('pointerup', onPointerUp);
+                    window.removeEventListener('pointercancel', onPointerUp);
+                    window.removeEventListener('resize', handleResize);
+                };
+            }, [eraserSize, redraw]);
 
             // Persistence logic
             useEffect(() => {
@@ -2482,105 +2606,6 @@
                 return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
             }, [text, strokeHistory, meterLevel]);
 
-            const startDrawing = (e) => {
-                if (mode !== 'draw' && mode !== 'erase') return;
-                
-                // Capture pointer to ensure all events (especially for Apple Pencil) are tracked
-                try {
-                    e.target.setPointerCapture(e.pointerId);
-                } catch (err) {}
-
-                const canvas = canvasRef.current;
-                const ctx = canvas.getContext('2d');
-                const rect = canvas.getBoundingClientRect();
-                canvasRectRef.current = rect;
-                
-                const x = e.clientX - rect.left;
-                const y = e.clientY - rect.top;
-                
-                if (eraserRef.current) {
-                    eraserRef.current.style.left = `${x}px`;
-                    eraserRef.current.style.top = `${y}px`;
-                }
-
-                // Set styles immediately
-                if (mode === 'erase') {
-                    ctx.strokeStyle = '#FFFFFF';
-                    ctx.fillStyle = '#FFFFFF';
-                    ctx.lineWidth = eraserSize;
-                } else {
-                    ctx.strokeStyle = '#334155';
-                    ctx.fillStyle = '#334155';
-                    ctx.lineWidth = 3;
-                }
-                ctx.globalCompositeOperation = 'source-over';
-
-                // Draw an initial dot immediately for instant feedback (crucial for Apple Pencil taps)
-                ctx.beginPath();
-                ctx.arc(x, y, ctx.lineWidth / 2, 0, Math.PI * 2);
-                ctx.fill();
-
-                // Start path for subsequent move events
-                ctx.beginPath();
-                ctx.moveTo(x, y);
-
-                setIsDrawing(true);
-                isDrawingRef.current = true;
-                
-                currentStrokeRef.current = {
-                    mode: mode,
-                    points: [{ x, y }],
-                    eraserSize: eraserSize
-                };
-            };
-
-            const draw = (e) => {
-                if (!isDrawingRef.current || (mode !== 'draw' && mode !== 'erase')) return;
-                
-                if (!hasDrawn) setHasDrawn(true);
-
-                const canvas = canvasRef.current;
-                const ctx = canvas.getContext('2d');
-                const rect = canvasRectRef.current || canvas.getBoundingClientRect();
-                
-                // Use coalesced events for much smoother high-frequency input (Apple Pencil)
-                const events = e.getCoalescedEvents ? e.getCoalescedEvents() : [e];
-                
-                events.forEach(ev => {
-                    const x = ev.clientX - rect.left;
-                    const y = ev.clientY - rect.top;
-
-                    if (eraserRef.current) {
-                        eraserRef.current.style.left = `${x}px`;
-                        eraserRef.current.style.top = `${y}px`;
-                    }
-
-                    ctx.lineTo(x, y);
-                    if (currentStrokeRef.current) {
-                        currentStrokeRef.current.points.push({ x, y });
-                    }
-                });
-                
-                ctx.stroke();
-            };
-
-            const stopDrawing = (e) => {
-                if (!isDrawingRef.current) return;
-                
-                try {
-                    e.target.releasePointerCapture(e.pointerId);
-                } catch (err) {}
-
-                setIsDrawing(false);
-                isDrawingRef.current = false;
-                
-                if (currentStrokeRef.current && currentStrokeRef.current.points.length > 0) {
-                    // Capture current stroke before setting it to null
-                    const finishedStroke = currentStrokeRef.current;
-                    setStrokeHistory(prev => [...prev, finishedStroke]);
-                }
-                currentStrokeRef.current = null;
-            };
 
             const clearAll = () => {
                 const canvas = canvasRef.current;
@@ -2803,11 +2828,6 @@
                                 ref={canvasRef}
                                 className={`absolute inset-0 w-full h-full touch-none ${mode === 'draw' || mode === 'erase' ? 'z-10' : 'z-0 pointer-events-none'}`}
                                 style={{ cursor: getCursorStyle() }}
-                                onPointerDown={startDrawing}
-                                onPointerMove={draw}
-                                onPointerUp={stopDrawing}
-                                onPointerCancel={stopDrawing}
-                                onPointerLeave={stopDrawing}
                             />
 
                             {/* Custom Eraser Cursor for Touch */}
