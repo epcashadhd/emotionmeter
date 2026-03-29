@@ -2379,7 +2379,7 @@
             const redraw = useCallback(() => {
                 const canvas = canvasRef.current;
                 if (!canvas) return;
-                const ctx = canvas.getContext('2d', { alpha: false }); // Optimization: opaque canvas
+                const ctx = canvas.getContext('2d', { alpha: false });
                 
                 ctx.fillStyle = '#FFFFFF';
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -2388,22 +2388,21 @@
                 ctx.lineJoin = 'round';
                 ctx.globalCompositeOperation = 'source-over';
 
-                strokeHistory.forEach(stroke => {
+                const drawStroke = (stroke) => {
                     if (!stroke || !stroke.points || stroke.points.length === 0) return;
                     
                     ctx.beginPath();
-                    
-                    // Use white brush for eraser instead of destination-out for better compatibility
                     if (stroke.mode === 'erase') {
                         ctx.strokeStyle = '#FFFFFF';
+                        ctx.fillStyle = '#FFFFFF';
                         ctx.lineWidth = stroke.eraserSize;
                     } else {
                         ctx.strokeStyle = '#334155';
+                        ctx.fillStyle = '#334155';
                         ctx.lineWidth = 3;
                     }
 
                     if (stroke.points.length === 1) {
-                        // Support single point drawing (e.g. for hair or dots)
                         const p = stroke.points[0];
                         ctx.arc(p.x, p.y, ctx.lineWidth / 2, 0, Math.PI * 2);
                         ctx.fill();
@@ -2414,8 +2413,17 @@
                         }
                         ctx.stroke();
                     }
-                });
-            }, [strokeHistory]);
+                };
+
+                // Draw history
+                strokeHistory.forEach(drawStroke);
+
+                // CRITICAL: Also draw the current active stroke to prevent it being "wiped" 
+                // during the React state update/re-render cycle
+                if (isDrawing && currentStrokeRef.current) {
+                    drawStroke(currentStrokeRef.current);
+                }
+            }, [strokeHistory, isDrawing]);
 
             // Canvas Initialization (Only on mount)
             useEffect(() => {
@@ -2475,14 +2483,15 @@
 
             const startDrawing = (e) => {
                 if (mode !== 'draw' && mode !== 'erase') return;
+                
+                // For PointerEvents, we use e.clientX/Y directly
                 const canvas = canvasRef.current;
                 const ctx = canvas.getContext('2d');
                 const rect = canvas.getBoundingClientRect();
                 canvasRectRef.current = rect;
-                const clientX = e.clientX || (e.touches && e.touches[0].clientX);
-                const clientY = e.clientY || (e.touches && e.touches[0].clientY);
-                const x = clientX - rect.left;
-                const y = clientY - rect.top;
+                
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
                 
                 if (eraserRef.current) {
                     eraserRef.current.style.left = `${x}px`;
@@ -2492,19 +2501,19 @@
                 ctx.beginPath();
                 ctx.moveTo(x, y);
                 
-                // Use white brush for eraser
                 if (mode === 'erase') {
                     ctx.strokeStyle = '#FFFFFF';
+                    ctx.fillStyle = '#FFFFFF';
                     ctx.lineWidth = eraserSize;
                 } else {
                     ctx.strokeStyle = '#334155';
+                    ctx.fillStyle = '#334155';
                     ctx.lineWidth = 3;
                 }
                 ctx.globalCompositeOperation = 'source-over';
 
                 setIsDrawing(true);
                 
-                // Start new stroke in ref instead of state to avoid jittering
                 currentStrokeRef.current = {
                     mode: mode,
                     points: [{ x, y }],
@@ -2514,18 +2523,15 @@
 
             const draw = (e) => {
                 if (!isDrawing || (mode !== 'draw' && mode !== 'erase')) return;
-                // Only prevent default if we are drawing to avoid scrolling
-                if (e.cancelable) e.preventDefault(); 
                 
                 if (!hasDrawn) setHasDrawn(true);
 
                 const canvas = canvasRef.current;
                 const ctx = canvas.getContext('2d');
                 const rect = canvasRectRef.current || canvas.getBoundingClientRect();
-                const clientX = e.clientX || (e.touches && e.touches[0].clientX);
-                const clientY = e.clientY || (e.touches && e.touches[0].clientY);
-                const x = clientX - rect.left;
-                const y = clientY - rect.top;
+                
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
 
                 if (eraserRef.current) {
                     eraserRef.current.style.left = `${x}px`;
@@ -2535,7 +2541,6 @@
                 ctx.lineTo(x, y);
                 ctx.stroke();
                 
-                // Update current stroke in ref to avoid jittering
                 if (currentStrokeRef.current) {
                     currentStrokeRef.current.points.push({ x, y });
                 }
@@ -2773,13 +2778,11 @@
                                 ref={canvasRef}
                                 className={`absolute inset-0 w-full h-full touch-none ${mode === 'draw' || mode === 'erase' ? 'z-10' : 'z-0 pointer-events-none'}`}
                                 style={{ cursor: getCursorStyle() }}
-                                onMouseDown={startDrawing}
-                                onMouseMove={draw}
-                                onMouseUp={stopDrawing}
-                                onMouseLeave={stopDrawing}
-                                onTouchStart={startDrawing}
-                                onTouchMove={draw}
-                                onTouchEnd={stopDrawing}
+                                onPointerDown={startDrawing}
+                                onPointerMove={draw}
+                                onPointerUp={stopDrawing}
+                                onPointerCancel={stopDrawing}
+                                onPointerLeave={stopDrawing}
                             />
 
                             {/* Custom Eraser Cursor for Touch */}
