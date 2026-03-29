@@ -940,14 +940,6 @@
                                 >
                                     <span className="text-2xl sm:text-3xl mobile-landscape-emoji">🌳</span>
                                 </button>
-                                {exerciseType === 'emotion-tree' && (
-                                    <button 
-                                        onClick={() => window.dispatchEvent(new CustomEvent('grow-tree-instantly'))}
-                                        className="absolute top-full mt-2 px-2 py-1 bg-emerald-500 text-white text-[10px] sm:text-xs rounded-md font-bold shadow-sm whitespace-nowrap z-50 animate-bounce"
-                                    >
-                                        快速成長
-                                    </button>
-                                )}
                             </div>
                         </div>
                     </div>
@@ -1212,19 +1204,6 @@
             const cycleRef = useRef(0);
             const fadeIntervalRef = useRef(null);
             const canvasRef = useRef(null);
-
-            const growInstantly = () => {
-                growthRef.current = 1;
-                setGrowth(1);
-                setIsComplete(true);
-                setMusicStarted(true);
-            };
-
-            useEffect(() => {
-                const handleGrow = () => growInstantly();
-                window.addEventListener('grow-tree-instantly', handleGrow);
-                return () => window.removeEventListener('grow-tree-instantly', handleGrow);
-            }, []);
 
             // Generate tree structure once
             if (!treeStructureRef.current) {
