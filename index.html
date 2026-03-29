@@ -251,7 +251,7 @@
     <div id="root"></div>
 
     <script type="text/babel">
-        const { useState, useEffect, useRef } = React;
+        const { useState, useEffect, useRef, useCallback } = React;
 
         // --- Configuration ---
         const EMOTION_LEVELS = [
@@ -1151,15 +1151,16 @@
                                 justify-content: center;
                                 align-items: center;
                                 gap: 2rem;
-                                padding: 52px 1rem 0 1rem !important;
-                                max-width: 95%;
+                                padding: 40px 1rem 0 1rem !important;
+                                max-width: 98%;
                                 height: 100%;
                             }
                             .body-image-wrapper {
-                                height: 75vh !important;
+                                height: 85vh !important;
+                                max-height: 85vh !important;
                                 width: auto;
                                 flex: 0 0 auto;
-                                margin-top: -1.5rem !important;
+                                margin-top: -4.5rem !important;
                             }
                             .guidance-area {
                                 flex: 1;
@@ -1344,7 +1345,8 @@
                 };
                 // Increase depth to 8 for more detail and density
                 // 根據螢幕寬度動態調整起始長度，手機與平板版調大，桌面版維持 60 以防頂部遮擋
-                const initialLength = window.innerWidth < 640 ? 85 : (window.innerWidth < 1024 ? 75 : 60);
+                const isLandscape = window.innerWidth > window.innerHeight && window.innerHeight < 500;
+                const initialLength = isLandscape ? 120 : (window.innerWidth < 640 ? 85 : (window.innerWidth < 1024 ? 75 : 60));
                 treeStructureRef.current = generateTree(7, 0, initialLength, 0);
             }
 
@@ -1647,7 +1649,8 @@
                     // User requested no leaves on layer 3 (depth 5) and layer 4 (depth 4). 
                     // Leaves now start from layer 5 (depth 3) down to layer 7 (depth 1).
                     if (depth <= 3) {
-                        const leafOpacity = Math.max(0, Math.min(1, (localGrowth - 0.2) * 1.25));
+                        // 調整葉子生長節奏：30秒 (0.5) 開始冒芽，55秒 (0.9) 達到最茂盛
+                        const leafOpacity = Math.max(0, Math.min(1, (currentGrowth - 0.5) * 2.5)) * localGrowth;
                         if (leafOpacity > 0) {
                             ctx.save();
                             ctx.globalAlpha = leafOpacity * 0.6;
@@ -1710,8 +1713,8 @@
 
                         // Grow whenever pressing
                         if (isPressing) {
-                            // Grow 70s of total pressing time to full (1.0)
-                            growthRef.current = Math.min(1, growthRef.current + delta / 70000);
+                            // Grow 60s of total pressing time to full (1.0)
+                            growthRef.current = Math.min(1, growthRef.current + delta / 60000);
                             setGrowth(growthRef.current);
                             if (growthRef.current >= 1) {
                                 setIsComplete(true);
@@ -1772,7 +1775,7 @@
 
             return (
                 <div className="body-scan-container !justify-start !pt-0 animate-[gentleFadeIn_0.8s_ease-in-out]">
-                    <div className="body-image-wrapper !max-h-[60vh] sm:!max-h-[45vh] !mt-0 !aspect-[4/5] relative">
+                    <div className="body-image-wrapper !max-h-[60vh] sm:!max-h-[45vh] [@media(orientation:landscape)]:!max-h-none !mt-0 !aspect-[4/5] relative">
                         {/* Tree Canvas */}
                         <canvas 
                             ref={canvasRef}
@@ -1826,7 +1829,7 @@
 
                         {/* Timeline / Progress Bar */}
                         {musicStarted && (
-                            <div className="absolute bottom-[-24px] left-1/2 -translate-x-1/2 w-48 h-1 bg-slate-200/50 rounded-full overflow-hidden backdrop-blur-sm">
+                            <div className="absolute bottom-[-24px] [@media(orientation:landscape)]:bottom-[-12px] left-1/2 -translate-x-1/2 w-48 h-1 bg-slate-200/50 rounded-full overflow-hidden backdrop-blur-sm">
                                 <div 
                                     className="h-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.5)]"
                                     style={{ width: `${growth * 100}%` }}
@@ -2283,15 +2286,23 @@
 
         function EmotionWritingView({ emotion, onBack, onHome, show }) {
             const [mode, setMode] = useState(null); // 'draw', 'type', 'erase', null
-            const [text, setText] = useState('');
-            const [meterLevel, setMeterLevel] = useState(1);
+            const [text, setText] = useState(() => localStorage.getItem('emotionExplorer_text') || '');
+            const [meterLevel, setMeterLevel] = useState(() => Number(localStorage.getItem('emotionExplorer_meterLevel')) || 1);
             const canvasRef = useRef(null);
             const [isDrawing, setIsDrawing] = useState(false);
             const [isDraggingMeter, setIsDraggingMeter] = useState(false);
             const [eraserSize, setEraserSize] = useState(20); // 20: Medium, 40: Big
             const [cursorPos, setCursorPos] = useState({ x: 0, y: 0 });
-            const [hasDrawn, setHasDrawn] = useState(false);
+            const [strokeHistory, setStrokeHistory] = useState(() => {
+                const saved = localStorage.getItem('emotionExplorer_strokes');
+                return saved ? JSON.parse(saved) : [];
+            });
+            const [hasDrawn, setHasDrawn] = useState(() => {
+                const saved = localStorage.getItem('emotionExplorer_strokes');
+                return saved ? JSON.parse(saved).length > 0 : false;
+            });
             const trackRef = useRef(null);
+            const saveTimeoutRef = useRef(null);
             
             // Enlargement Logic
             const [enlargedEmotion, setEnlargedEmotion] = useState(null);
@@ -2369,8 +2380,43 @@
                 const percentage = Math.max(0, Math.min(1, height / rect.height));
                 const newLevel = Math.max(1, Math.min(7, Math.ceil(percentage * 7)));
                 setMeterLevel(newLevel);
+                localStorage.setItem('emotionExplorer_meterLevel', newLevel);
             };
             
+            // Redraw function
+            const redraw = useCallback(() => {
+                const canvas = canvasRef.current;
+                if (!canvas) return;
+                const ctx = canvas.getContext('2d');
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.lineCap = 'round';
+                ctx.lineJoin = 'round';
+
+                strokeHistory.forEach(stroke => {
+                    if (stroke.points.length < 2) return;
+                    
+                    ctx.beginPath();
+                    ctx.moveTo(stroke.points[0].x, stroke.points[0].y);
+                    
+                    if (stroke.mode === 'erase') {
+                        ctx.globalCompositeOperation = 'destination-out';
+                        ctx.lineWidth = stroke.eraserSize;
+                    } else {
+                        ctx.globalCompositeOperation = 'source-over';
+                        ctx.lineWidth = 3;
+                        ctx.strokeStyle = '#334155';
+                    }
+
+                    for (let i = 1; i < stroke.points.length; i++) {
+                        ctx.lineTo(stroke.points[i].x, stroke.points[i].y);
+                    }
+                    ctx.stroke();
+                });
+                
+                // Reset to default for next drawing
+                ctx.globalCompositeOperation = 'source-over';
+            }, [strokeHistory]);
+
             // Canvas Logic
             useEffect(() => {
                 const canvas = canvasRef.current;
@@ -2383,47 +2429,63 @@
                         const ctx = canvas.getContext('2d');
                         ctx.lineCap = 'round';
                         ctx.lineJoin = 'round';
+                        
+                        redraw();
                     };
 
                     initCanvas();
                     // Re-init after a short delay to ensure layout is stable (e.g. after transitions)
                     setTimeout(initCanvas, 100);
                 }
-            }, []);
+            }, [redraw]);
 
             // Handle resize
             useEffect(() => {
                 const handleResize = () => {
                     const canvas = canvasRef.current;
                     if (canvas) {
-                        // Save current content
-                        const tempCanvas = document.createElement('canvas');
-                        tempCanvas.width = canvas.width;
-                        tempCanvas.height = canvas.height;
-                        tempCanvas.getContext('2d').drawImage(canvas, 0, 0);
-                        
                         // Resize
                         canvas.width = canvas.offsetWidth;
                         canvas.height = canvas.offsetHeight;
                         
-                        // Restore content
-                        const ctx = canvas.getContext('2d');
-                        ctx.lineCap = 'round';
-                        ctx.lineJoin = 'round';
-                        ctx.drawImage(tempCanvas, 0, 0);
+                        // Redraw from history
+                        redraw();
                     }
                 };
                 window.addEventListener('resize', handleResize);
                 return () => window.removeEventListener('resize', handleResize);
-            }, []);
+            }, [redraw]);
+
+            // Persistence logic
+            useEffect(() => {
+                if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+                saveTimeoutRef.current = setTimeout(() => {
+                    localStorage.setItem('emotionExplorer_text', text);
+                    localStorage.setItem('emotionExplorer_strokes', JSON.stringify(strokeHistory));
+                    localStorage.setItem('emotionExplorer_meterLevel', meterLevel);
+                }, 500); // Debounce save
+            }, [text, strokeHistory, meterLevel]);
+
+            // Handle backgrounding
+            useEffect(() => {
+                const handleVisibilityChange = () => {
+                    if (document.visibilityState === 'hidden') {
+                        localStorage.setItem('emotionExplorer_text', text);
+                        localStorage.setItem('emotionExplorer_strokes', JSON.stringify(strokeHistory));
+                        localStorage.setItem('emotionExplorer_meterLevel', meterLevel);
+                    }
+                };
+                document.addEventListener('visibilitychange', handleVisibilityChange);
+                return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+            }, [text, strokeHistory, meterLevel]);
 
             const startDrawing = (e) => {
                 if (mode !== 'draw' && mode !== 'erase') return;
                 const canvas = canvasRef.current;
                 const ctx = canvas.getContext('2d');
                 const rect = canvas.getBoundingClientRect();
-                const clientX = e.clientX || e.touches[0].clientX;
-                const clientY = e.clientY || e.touches[0].clientY;
+                const clientX = e.clientX || (e.touches && e.touches[0].clientX);
+                const clientY = e.clientY || (e.touches && e.touches[0].clientY);
                 const x = clientX - rect.left;
                 const y = clientY - rect.top;
                 
@@ -2443,6 +2505,13 @@
                 }
 
                 setIsDrawing(true);
+                
+                // Start new stroke in history
+                setStrokeHistory(prev => [...prev, {
+                    mode: mode,
+                    points: [{ x, y }],
+                    eraserSize: eraserSize
+                }]);
             };
 
             const draw = (e) => {
@@ -2455,8 +2524,8 @@
                 const canvas = canvasRef.current;
                 const ctx = canvas.getContext('2d');
                 const rect = canvas.getBoundingClientRect();
-                const clientX = e.clientX || e.touches[0].clientX;
-                const clientY = e.clientY || e.touches[0].clientY;
+                const clientX = e.clientX || (e.touches && e.touches[0].clientX);
+                const clientY = e.clientY || (e.touches && e.touches[0].clientY);
                 const x = clientX - rect.left;
                 const y = clientY - rect.top;
 
@@ -2464,6 +2533,14 @@
 
                 ctx.lineTo(x, y);
                 ctx.stroke();
+                
+                // Update current stroke in history
+                setStrokeHistory(prev => {
+                    const newHistory = [...prev];
+                    const currentStroke = newHistory[newHistory.length - 1];
+                    currentStroke.points.push({ x, y });
+                    return newHistory;
+                });
             };
 
             const stopDrawing = () => {
@@ -2476,6 +2553,10 @@
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
                 setText('');
                 setHasDrawn(false);
+                setStrokeHistory([]);
+                localStorage.removeItem('emotionExplorer_text');
+                localStorage.removeItem('emotionExplorer_strokes');
+                localStorage.setItem('emotionExplorer_meterLevel', 1);
             };
 
             const toggleMode = (newMode) => {
