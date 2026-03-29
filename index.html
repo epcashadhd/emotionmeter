@@ -2282,6 +2282,7 @@
             });
             const trackRef = useRef(null);
             const saveTimeoutRef = useRef(null);
+            const currentStrokeRef = useRef(null);
             
             // Enlargement Logic
             const [enlargedEmotion, setEnlargedEmotion] = useState(null);
@@ -2367,23 +2368,28 @@
                 const canvas = canvasRef.current;
                 if (!canvas) return;
                 const ctx = canvas.getContext('2d');
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                
+                // Fill with white background to prevent black background issues
+                ctx.fillStyle = '#FFFFFF';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                
                 ctx.lineCap = 'round';
                 ctx.lineJoin = 'round';
+                ctx.globalCompositeOperation = 'source-over';
 
                 strokeHistory.forEach(stroke => {
-                    if (stroke.points.length < 2) return;
+                    if (!stroke || !stroke.points || stroke.points.length < 2) return;
                     
                     ctx.beginPath();
                     ctx.moveTo(stroke.points[0].x, stroke.points[0].y);
                     
+                    // Use white brush for eraser instead of destination-out for better compatibility
                     if (stroke.mode === 'erase') {
-                        ctx.globalCompositeOperation = 'destination-out';
+                        ctx.strokeStyle = '#FFFFFF';
                         ctx.lineWidth = stroke.eraserSize;
                     } else {
-                        ctx.globalCompositeOperation = 'source-over';
-                        ctx.lineWidth = 3;
                         ctx.strokeStyle = '#334155';
+                        ctx.lineWidth = 3;
                     }
 
                     for (let i = 1; i < stroke.points.length; i++) {
@@ -2391,9 +2397,6 @@
                     }
                     ctx.stroke();
                 });
-                
-                // Reset to default for next drawing
-                ctx.globalCompositeOperation = 'source-over';
             }, [strokeHistory]);
 
             // Canvas Logic
@@ -2406,6 +2409,11 @@
                         canvas.height = canvas.offsetHeight;
                         
                         const ctx = canvas.getContext('2d');
+                        
+                        // Initial fill with white to prevent black background issues
+                        ctx.fillStyle = '#FFFFFF';
+                        ctx.fillRect(0, 0, canvas.width, canvas.height);
+                        
                         ctx.lineCap = 'round';
                         ctx.lineJoin = 'round';
                         
@@ -2473,24 +2481,24 @@
                 ctx.beginPath();
                 ctx.moveTo(x, y);
                 
-                // Set style based on mode
+                // Use white brush for eraser
                 if (mode === 'erase') {
-                    ctx.globalCompositeOperation = 'destination-out';
+                    ctx.strokeStyle = '#FFFFFF';
                     ctx.lineWidth = eraserSize;
                 } else {
-                    ctx.globalCompositeOperation = 'source-over';
-                    ctx.lineWidth = 3;
                     ctx.strokeStyle = '#334155';
+                    ctx.lineWidth = 3;
                 }
+                ctx.globalCompositeOperation = 'source-over';
 
                 setIsDrawing(true);
                 
-                // Start new stroke in history
-                setStrokeHistory(prev => [...prev, {
+                // Start new stroke in ref instead of state to avoid jittering
+                currentStrokeRef.current = {
                     mode: mode,
                     points: [{ x, y }],
                     eraserSize: eraserSize
-                }]);
+                };
             };
 
             const draw = (e) => {
@@ -2513,23 +2521,28 @@
                 ctx.lineTo(x, y);
                 ctx.stroke();
                 
-                // Update current stroke in history
-                setStrokeHistory(prev => {
-                    const newHistory = [...prev];
-                    const currentStroke = newHistory[newHistory.length - 1];
-                    currentStroke.points.push({ x, y });
-                    return newHistory;
-                });
+                // Update current stroke in ref to avoid jittering
+                if (currentStrokeRef.current) {
+                    currentStrokeRef.current.points.push({ x, y });
+                }
             };
 
             const stopDrawing = () => {
+                if (isDrawing && currentStrokeRef.current) {
+                    // Capture current stroke before setting it to null
+                    const finishedStroke = currentStrokeRef.current;
+                    // Push current stroke to history only when drawing stops
+                    setStrokeHistory(prev => [...prev, finishedStroke]);
+                    currentStrokeRef.current = null;
+                }
                 setIsDrawing(false);
             };
 
             const clearAll = () => {
                 const canvas = canvasRef.current;
                 const ctx = canvas.getContext('2d');
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = '#FFFFFF';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
                 setText('');
                 setHasDrawn(false);
                 setStrokeHistory([]);
