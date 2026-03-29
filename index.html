@@ -1324,8 +1324,8 @@
                 };
                 // Increase depth to 8 for more detail and density
                 // 根據螢幕寬度動態調整起始長度，手機與平板版調大，桌面版維持 60 以防頂部遮擋
-                const isLandscape = window.innerWidth > window.innerHeight && window.innerHeight < 500;
-                const initialLength = isLandscape ? 120 : (window.innerWidth < 640 ? 85 : (window.innerWidth < 1024 ? 75 : 60));
+                const isLandscape = window.innerWidth > window.innerHeight;
+                const initialLength = isLandscape ? (window.innerHeight < 500 ? 120 : 100) : (window.innerWidth < 640 ? 85 : (window.innerWidth < 1024 ? 75 : 60));
                 treeStructureRef.current = generateTree(7, 0, initialLength, 0);
             }
 
@@ -1723,7 +1723,7 @@
                         // Map SVG coordinate system to Canvas
                         // SVG: viewBox="-200 -450 400 500"
                         const scale = rect.width / 400;
-                        ctx.translate(rect.width / 2, rect.height * 0.92);
+                        ctx.translate(rect.width / 2, rect.height * 0.85);
                         ctx.scale(scale, scale);
                         
                         if (treeStructureRef.current) {
@@ -1754,7 +1754,7 @@
 
             return (
                 <div className="body-scan-container !justify-start !pt-0 animate-[gentleFadeIn_0.8s_ease-in-out]">
-                    <div className="body-image-wrapper !max-h-[60vh] sm:!max-h-[45vh] [@media(orientation:landscape)]:!max-h-none !mt-0 !aspect-[4/5] relative">
+                    <div className="body-image-wrapper !max-h-[60vh] sm:!max-h-[45vh] [@media(orientation:landscape)]:!max-h-[72vh] [@media(orientation:landscape)]:!-mt-8 !mt-0 !aspect-[4/5] relative">
                         {/* Tree Canvas */}
                         <canvas 
                             ref={canvasRef}
@@ -1770,7 +1770,7 @@
                             {/* Shadow (Floor) - Now the interaction area */}
                             <ellipse 
                                 key="interaction-shadow"
-                                cx="0" cy="20" rx="140" ry="30" 
+                                cx="0" cy="-10" rx="140" ry="30" 
                                 fill={isPressing ? "#34D399" : "#000"} 
                                 opacity={isPressing ? "0.2" : "0.1"} 
                                 filter="url(#shadowBlur)"
@@ -1817,7 +1817,7 @@
                         )}
                     </div>
 
-                    <div className="guidance-area flex flex-col items-center justify-center mt-2 sm:mt-4 min-h-[80px] sm:min-h-[100px]">
+                    <div className="guidance-area flex flex-col items-center justify-center mt-0 sm:mt-2 min-h-[80px] sm:min-h-[100px]">
                         <div key={line1 + line2} className="flex flex-col items-center gap-2 animate-[slowFadeInOut_5s_ease-in-out]">
                             <p className={`${isInhalePhase ? 'text-emerald-600' : 'text-sky-600'} text-2xl sm:text-3xl font-black tracking-widest whitespace-nowrap transition-colors duration-1000`}>
                                 {line1}
