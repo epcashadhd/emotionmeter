@@ -2379,9 +2379,8 @@
             const redraw = useCallback(() => {
                 const canvas = canvasRef.current;
                 if (!canvas) return;
-                const ctx = canvas.getContext('2d');
+                const ctx = canvas.getContext('2d', { alpha: false }); // Optimization: opaque canvas
                 
-                // Fill with white background to prevent black background issues
                 ctx.fillStyle = '#FFFFFF';
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
                 
@@ -2390,10 +2389,9 @@
                 ctx.globalCompositeOperation = 'source-over';
 
                 strokeHistory.forEach(stroke => {
-                    if (!stroke || !stroke.points || stroke.points.length < 2) return;
+                    if (!stroke || !stroke.points || stroke.points.length === 0) return;
                     
                     ctx.beginPath();
-                    ctx.moveTo(stroke.points[0].x, stroke.points[0].y);
                     
                     // Use white brush for eraser instead of destination-out for better compatibility
                     if (stroke.mode === 'erase') {
@@ -2404,38 +2402,38 @@
                         ctx.lineWidth = 3;
                     }
 
-                    for (let i = 1; i < stroke.points.length; i++) {
-                        ctx.lineTo(stroke.points[i].x, stroke.points[i].y);
+                    if (stroke.points.length === 1) {
+                        // Support single point drawing (e.g. for hair or dots)
+                        const p = stroke.points[0];
+                        ctx.arc(p.x, p.y, ctx.lineWidth / 2, 0, Math.PI * 2);
+                        ctx.fill();
+                    } else {
+                        ctx.moveTo(stroke.points[0].x, stroke.points[0].y);
+                        for (let i = 1; i < stroke.points.length; i++) {
+                            ctx.lineTo(stroke.points[i].x, stroke.points[i].y);
+                        }
+                        ctx.stroke();
                     }
-                    ctx.stroke();
                 });
             }, [strokeHistory]);
 
-            // Canvas Logic
+            // Canvas Initialization (Only on mount)
             useEffect(() => {
                 const canvas = canvasRef.current;
                 if (canvas) {
                     const initCanvas = () => {
-                        // Set canvas size to match display size
                         canvas.width = canvas.offsetWidth;
                         canvas.height = canvas.offsetHeight;
-                        
-                        const ctx = canvas.getContext('2d');
-                        
-                        // Initial fill with white to prevent black background issues
-                        ctx.fillStyle = '#FFFFFF';
-                        ctx.fillRect(0, 0, canvas.width, canvas.height);
-                        
-                        ctx.lineCap = 'round';
-                        ctx.lineJoin = 'round';
-                        
                         redraw();
                     };
-
                     initCanvas();
-                    // Re-init after a short delay to ensure layout is stable (e.g. after transitions)
                     setTimeout(initCanvas, 100);
                 }
+            }, []); // Empty dependency: only run once on mount
+
+            // Separate effect for redrawing when history changes (without resizing canvas)
+            useEffect(() => {
+                redraw();
             }, [redraw]);
 
             // Handle resize
@@ -2443,11 +2441,8 @@
                 const handleResize = () => {
                     const canvas = canvasRef.current;
                     if (canvas) {
-                        // Resize
                         canvas.width = canvas.offsetWidth;
                         canvas.height = canvas.offsetHeight;
-                        
-                        // Redraw from history
                         redraw();
                     }
                 };
