@@ -2283,6 +2283,8 @@
             const trackRef = useRef(null);
             const saveTimeoutRef = useRef(null);
             const currentStrokeRef = useRef(null);
+            const canvasRectRef = useRef(null);
+            const eraserRef = useRef(null);
             
             // Enlargement Logic
             const [enlargedEmotion, setEnlargedEmotion] = useState(null);
@@ -2471,12 +2473,16 @@
                 const canvas = canvasRef.current;
                 const ctx = canvas.getContext('2d');
                 const rect = canvas.getBoundingClientRect();
+                canvasRectRef.current = rect;
                 const clientX = e.clientX || (e.touches && e.touches[0].clientX);
                 const clientY = e.clientY || (e.touches && e.touches[0].clientY);
                 const x = clientX - rect.left;
                 const y = clientY - rect.top;
                 
-                setCursorPos({ x, y });
+                if (eraserRef.current) {
+                    eraserRef.current.style.left = `${x}px`;
+                    eraserRef.current.style.top = `${y}px`;
+                }
 
                 ctx.beginPath();
                 ctx.moveTo(x, y);
@@ -2510,13 +2516,16 @@
 
                 const canvas = canvasRef.current;
                 const ctx = canvas.getContext('2d');
-                const rect = canvas.getBoundingClientRect();
+                const rect = canvasRectRef.current || canvas.getBoundingClientRect();
                 const clientX = e.clientX || (e.touches && e.touches[0].clientX);
                 const clientY = e.clientY || (e.touches && e.touches[0].clientY);
                 const x = clientX - rect.left;
                 const y = clientY - rect.top;
 
-                setCursorPos({ x, y });
+                if (eraserRef.current) {
+                    eraserRef.current.style.left = `${x}px`;
+                    eraserRef.current.style.top = `${y}px`;
+                }
 
                 ctx.lineTo(x, y);
                 ctx.stroke();
@@ -2771,12 +2780,11 @@
                             {/* Custom Eraser Cursor for Touch */}
                             {mode === 'erase' && isDrawing && (
                                 <div 
+                                    ref={eraserRef}
                                     className="absolute rounded-full border-2 border-slate-600 bg-white/50 pointer-events-none z-50"
                                     style={{
                                         width: eraserSize,
                                         height: eraserSize,
-                                        left: cursorPos.x,
-                                        top: cursorPos.y,
                                         transform: 'translate(-50%, -50%)'
                                     }}
                                 />
