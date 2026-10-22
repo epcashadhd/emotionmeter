@@ -1,0 +1,4 @@
+Bark Brown 02 — Rob Tuytel / Poly Haven
+https://polyhaven.com/a/bark_brown_02
+CC0 1.0 Universal: https://creativecommons.org/publicdomain/zero/1.0/
+1K diffuse, OpenGL normal and roughness JPG textures.

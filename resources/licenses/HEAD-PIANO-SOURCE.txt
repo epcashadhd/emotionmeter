@@ -1,0 +1,8 @@
+Head body-sensation exercise: head-piano-v4.m4a.
+Piano source: Piano Ambience chord progression 82bpm (sharps keys not quantized, natural), by CVLTIV8R.
+Source: https://freesound.org/people/CVLTIV8R/sounds/810857/
+License displayed on source page: Creative Commons 0 (CC0).
+Preview source: https://cdn.freesound.org/previews/810/810857_2520418-hq.mp3
+Approved listening sample: development/audio/head-preview/head-music-preview-v4.wav.
+The 90-second practice edition uses the same piano, tonal processing and reference gain, with soft opening and ending fades. It covers all five existing body-guidance stages.
+The breathing-tree music remains music2.mp3.
